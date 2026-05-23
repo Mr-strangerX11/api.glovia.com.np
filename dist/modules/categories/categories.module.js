@@ -1,0 +1,35 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CategoriesModule = void 0;
+const common_1 = require("@nestjs/common");
+const mongoose_1 = require("@nestjs/mongoose");
+const categories_service_1 = require("./categories.service");
+const categories_controller_1 = require("./categories.controller");
+const categories_gateway_1 = require("./categories.gateway");
+const schemas_1 = require("../../database/schemas");
+const auditlog_module_1 = require("../auditlog/auditlog.module");
+let CategoriesModule = class CategoriesModule {
+};
+exports.CategoriesModule = CategoriesModule;
+exports.CategoriesModule = CategoriesModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            auditlog_module_1.AuditLogModule,
+            mongoose_1.MongooseModule.forFeature([
+                { name: 'Category', schema: schemas_1.CategorySchema },
+                { name: 'Product', schema: schemas_1.ProductSchema },
+                { name: 'ProductImage', schema: schemas_1.ProductImageSchema },
+            ]),
+        ],
+        controllers: [categories_controller_1.CategoriesController],
+        providers: [categories_service_1.CategoriesService, categories_gateway_1.CategoriesGateway],
+        exports: [categories_service_1.CategoriesService, categories_gateway_1.CategoriesGateway],
+    })
+], CategoriesModule);
+//# sourceMappingURL=categories.module.js.map

@@ -1,0 +1,623 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AdminController = void 0;
+const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
+const platform_express_1 = require("@nestjs/platform-express");
+const admin_service_1 = require("./admin.service");
+const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const roles_guard_1 = require("../../common/guards/roles.guard");
+const admin_ip_allowlist_guard_1 = require("../../common/guards/admin-ip-allowlist.guard");
+const roles_decorator_1 = require("../../common/decorators/roles.decorator");
+const public_decorator_1 = require("../../common/decorators/public.decorator");
+const common_2 = require("@nestjs/common");
+const user_schema_1 = require("../../database/schemas/user.schema");
+const product_dto_1 = require("./dto/product.dto");
+const user_dto_1 = require("./dto/user.dto");
+const order_dto_1 = require("./dto/order.dto");
+const settings_dto_1 = require("./dto/settings.dto");
+const announcement_dto_1 = require("./dto/announcement.dto");
+const create_banner_dto_1 = require("../banners/dto/create-banner.dto");
+const update_banner_dto_1 = require("../banners/dto/update-banner.dto");
+const current_user_decorator_1 = require("../../common/decorators/current-user.decorator");
+const upload_service_1 = require("../upload/upload.service");
+let AdminController = class AdminController {
+    constructor(adminService, uploadService) {
+        this.adminService = adminService;
+        this.uploadService = uploadService;
+    }
+    parseProductFormData(body) {
+        const parseNumber = (value) => {
+            if (value === undefined || value === null || value === '')
+                return undefined;
+            const num = Number(value);
+            return Number.isNaN(num) ? undefined : num;
+        };
+        const parseBoolean = (value) => {
+            if (value === true || value === false)
+                return value;
+            if (typeof value === 'string')
+                return value.toLowerCase() === 'true';
+            return undefined;
+        };
+        const parseArray = (value) => {
+            if (!value)
+                return undefined;
+            if (Array.isArray(value))
+                return value;
+            if (typeof value === 'string') {
+                return value
+                    .split(',')
+                    .map((v) => v.trim())
+                    .filter(Boolean);
+            }
+            return undefined;
+        };
+        return {
+            ...body,
+            price: parseNumber(body.price),
+            compareAtPrice: parseNumber(body.compareAtPrice),
+            stockQuantity: parseNumber(body.stockQuantity),
+            quantityMl: parseNumber(body.quantityMl),
+            discountPercentage: parseNumber(body.discountPercentage),
+            isFeatured: parseBoolean(body.isFeatured),
+            isBestSeller: parseBoolean(body.isBestSeller),
+            isNew: parseBoolean(body.isNew),
+            suitableFor: parseArray(body.suitableFor),
+            tags: parseArray(body.tags),
+        };
+    }
+    getDashboard() {
+        return this.adminService.getDashboard();
+    }
+    getAllUsers(page, limit, role) {
+        return this.adminService.getAllUsers(page, limit, role);
+    }
+    createUser(dto) {
+        return this.adminService.createUser(dto);
+    }
+    updateUserRole(id, dto, actorRole) {
+        return this.adminService.updateUserRole(id, dto.role, actorRole);
+    }
+    deleteUser(id) {
+        return this.adminService.deleteUser(id);
+    }
+    freezeVendor(vendorId, dto) {
+        return this.adminService.freezeVendor(vendorId, dto.reason);
+    }
+    unfreezeVendor(vendorId, dto) {
+        return this.adminService.unfreezeVendor(vendorId, dto.reason);
+    }
+    createProduct(dto) {
+        return this.adminService.createProduct(dto);
+    }
+    bulkCreateProducts(body) {
+        return this.adminService.bulkCreateProducts(body.products || []);
+    }
+    async createProductWithImages(files, body) {
+        const payload = this.parseProductFormData(body);
+        if (files && files.length > 0) {
+            const urls = await this.uploadService.uploadMultiple(files, 'products');
+            payload.images = urls;
+        }
+        return this.adminService.createProduct(payload);
+    }
+    updateProduct(id, dto) {
+        return this.adminService.updateProduct(id, dto);
+    }
+    async updateProductWithImages(id, files, body) {
+        const payload = this.parseProductFormData(body);
+        if (files && files.length > 0) {
+            const urls = await this.uploadService.uploadMultiple(files, 'products');
+            payload.images = urls.map((url, index) => ({
+                url,
+                isPrimary: index === 0,
+            }));
+        }
+        return this.adminService.updateProduct(id, payload);
+    }
+    deleteProduct(id) {
+        return this.adminService.deleteProduct(id);
+    }
+    getAllProducts(page, limit, categoryId, brandId) {
+        return this.adminService.getAllProducts(page ? Number(page) : 1, limit ? Number(limit) : 10, categoryId, brandId);
+    }
+    getProduct(id) {
+        return this.adminService.getProduct(id);
+    }
+    getAllOrders(status, page, limit) {
+        return this.adminService.getAllOrders(page ? Number(page) : 1, limit ? Number(limit) : 10, status);
+    }
+    getOrder(id) {
+        return this.adminService.getOrderDetails(id);
+    }
+    updateOrder(id, dto) {
+        return this.adminService.updateOrderStatus(id, dto.status);
+    }
+    deleteOrder(id) {
+        return this.adminService.deleteOrder(id);
+    }
+    getAllCustomers(page, limit) {
+        return this.adminService.getAllCustomers(page ? Number(page) : 1, limit ? Number(limit) : 10);
+    }
+    getAllReviews(isApproved, page, limit) {
+        return this.adminService.getAllReviews(page ? Number(page) : 1, limit ? Number(limit) : 10, isApproved ? isApproved === 'true' : undefined);
+    }
+    approveReview(id) {
+        return this.adminService.approveReview(id);
+    }
+    deleteReview(id) {
+        return this.adminService.deleteReview(id);
+    }
+    async getDeliverySettings() {
+        return this.adminService.getDeliverySettings();
+    }
+    async updateDeliverySettings(dto, user) {
+        await this.adminService.updateDeliverySettings(dto, {
+            userId: user?._id?.toString() || user?.id,
+            username: user?.email || user?.username,
+        });
+        return { ...dto, message: 'Delivery settings updated successfully' };
+    }
+    getAnnouncement() {
+        return this.adminService.getAnnouncementBar();
+    }
+    updateAnnouncement(dto, user) {
+        return this.adminService.updateAnnouncementBar(dto, {
+            userId: user?._id?.toString() || user?.id,
+            username: user?.email || user?.username,
+        });
+    }
+    async getDiscountSettings() {
+        const settings = await this.adminService.getDiscountSettings();
+        return settings;
+    }
+    async updateDiscountSettings(dto, user) {
+        return this.adminService.updateDiscountSettings(dto, {
+            userId: user?._id?.toString() || user?.id,
+            username: user?.email || user?.username,
+        });
+    }
+    async getCategories() {
+        return this.adminService.getAllCategories();
+    }
+    async getBanners() {
+        return this.adminService.getAllBanners();
+    }
+    async getBanner(id) {
+        return this.adminService.getBanner(id);
+    }
+    async createBanner(createBannerDto) {
+        return this.adminService.createBanner(createBannerDto);
+    }
+    async updateBanner(id, updateBannerDto) {
+        return this.adminService.updateBanner(id, updateBannerDto);
+    }
+    async deleteBanner(id) {
+        return this.adminService.deleteBanner(id);
+    }
+    async initializeUsers() {
+        try {
+            const result = await this.adminService.seedInitialUsers();
+            return {
+                status: 'success',
+                message: 'Initial users created successfully',
+                data: result,
+            };
+        }
+        catch (error) {
+            console.error('Init users failed:', error);
+            return {
+                status: 'error',
+                message: error?.message || 'Failed to initialize users',
+            };
+        }
+    }
+    async fixSuperAdmin() {
+        try {
+            const result = await this.adminService.fixSuperAdminRole();
+            return {
+                status: 'success',
+                message: 'SuperAdmin role fixed',
+                data: result,
+            };
+        }
+        catch (error) {
+            console.error('Init users failed:', error);
+            return {
+                status: 'error',
+                message: error?.message || 'Failed to initialize users',
+            };
+        }
+    }
+    async getFeaturedVendors() {
+        return this.adminService.getFeaturedVendors();
+    }
+    async getAllVendors() {
+        return this.adminService.getAllVendors();
+    }
+    async toggleVendorFeatured(vendorId) {
+        return this.adminService.toggleVendorFeatured(vendorId);
+    }
+};
+exports.AdminController = AdminController;
+__decorate([
+    (0, common_1.Get)('dashboard'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get dashboard analytics' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getDashboard", null);
+__decorate([
+    (0, common_1.Get)('users'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all users with pagination and optional role filter' }),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
+    __param(2, (0, common_1.Query)('role')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number, String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getAllUsers", null);
+__decorate([
+    (0, common_1.Post)('users'),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new user with role' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [user_dto_1.CreateUserDto]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "createUser", null);
+__decorate([
+    (0, common_1.Put)('users/:id/role'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update user role' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)('role')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, user_dto_1.UpdateUserRoleDto, String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateUserRole", null);
+__decorate([
+    (0, common_1.Delete)('users/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete user' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteUser", null);
+__decorate([
+    (0, common_1.Post)('vendors/:vendorId/freeze'),
+    (0, swagger_1.ApiOperation)({ summary: 'Freeze vendor account' }),
+    __param(0, (0, common_1.Param)('vendorId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, user_dto_1.FreezeVendorDto]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "freezeVendor", null);
+__decorate([
+    (0, common_1.Post)('vendors/:vendorId/unfreeze'),
+    (0, swagger_1.ApiOperation)({ summary: 'Unfreeze vendor account' }),
+    __param(0, (0, common_1.Param)('vendorId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, user_dto_1.UnfreezeVendorDto]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "unfreezeVendor", null);
+__decorate([
+    (0, common_1.Post)('products'),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new product' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [product_dto_1.CreateProductDto]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "createProduct", null);
+__decorate([
+    (0, common_1.Post)('products/bulk'),
+    (0, swagger_1.ApiOperation)({ summary: 'Bulk create products from JSON array' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "bulkCreateProducts", null);
+__decorate([
+    (0, common_1.Post)('products/with-images'),
+    (0, swagger_1.ApiOperation)({ summary: 'Create product with image upload' }),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('images', 10, {
+        limits: { fileSize: upload_service_1.MAX_UPLOAD_SIZE_BYTES, files: 10 },
+        fileFilter: upload_service_1.imageFileFilter,
+    })),
+    __param(0, (0, common_1.UploadedFiles)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Array, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "createProductWithImages", null);
+__decorate([
+    (0, common_1.Put)('products/:id'),
+    (0, common_1.Header)('Cache-Control', 'no-cache, no-store, must-revalidate'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update product' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, product_dto_1.UpdateProductDto]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateProduct", null);
+__decorate([
+    (0, common_1.Put)('products/:id/with-images'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update product with image upload' }),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('images', 10, {
+        limits: { fileSize: upload_service_1.MAX_UPLOAD_SIZE_BYTES, files: 10 },
+        fileFilter: upload_service_1.imageFileFilter,
+    })),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.UploadedFiles)()),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Array, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateProductWithImages", null);
+__decorate([
+    (0, common_1.Delete)('products/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete product' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteProduct", null);
+__decorate([
+    (0, common_1.Get)('products'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all products (admin)' }),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
+    __param(2, (0, common_1.Query)('categoryId')),
+    __param(3, (0, common_1.Query)('brandId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getAllProducts", null);
+__decorate([
+    (0, common_1.Get)('products/:id'),
+    (0, common_1.Header)('Cache-Control', 'no-cache, no-store, must-revalidate'),
+    (0, common_1.Header)('Pragma', 'no-cache'),
+    (0, common_1.Header)('Expires', '0'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get product by ID (admin)' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getProduct", null);
+__decorate([
+    (0, common_1.Get)('orders'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all orders' }),
+    __param(0, (0, common_1.Query)('status')),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getAllOrders", null);
+__decorate([
+    (0, common_1.Get)('orders/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get order details by ID' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getOrder", null);
+__decorate([
+    (0, common_1.Put)('orders/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update order status' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, order_dto_1.UpdateOrderDto]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateOrder", null);
+__decorate([
+    (0, common_1.Delete)('orders/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete order' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteOrder", null);
+__decorate([
+    (0, common_1.Get)('customers'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all customers' }),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getAllCustomers", null);
+__decorate([
+    (0, common_1.Get)('reviews'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all reviews' }),
+    __param(0, (0, common_1.Query)('isApproved')),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getAllReviews", null);
+__decorate([
+    (0, common_1.Patch)('reviews/:id/approve'),
+    (0, swagger_1.ApiOperation)({ summary: 'Approve review' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "approveReview", null);
+__decorate([
+    (0, common_1.Delete)('reviews/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete review' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteReview", null);
+__decorate([
+    (0, common_1.Get)('settings/delivery'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get delivery settings' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getDeliverySettings", null);
+__decorate([
+    (0, common_1.Put)('settings/delivery'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update delivery settings' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [settings_dto_1.UpdateDeliverySettingsDto, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateDeliverySettings", null);
+__decorate([
+    (0, public_decorator_1.Public)(),
+    (0, common_1.Get)('settings/announcement'),
+    (0, common_1.Header)('Cache-Control', 'no-cache, no-store, must-revalidate'),
+    (0, common_1.Header)('Pragma', 'no-cache'),
+    (0, common_1.Header)('Expires', '0'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get announcement bar settings' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getAnnouncement", null);
+__decorate([
+    (0, common_1.Put)('settings/announcement'),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Update announcement bar' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [announcement_dto_1.UpdateAnnouncementDto, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateAnnouncement", null);
+__decorate([
+    (0, common_1.Get)('settings/discount'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get discount settings' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getDiscountSettings", null);
+__decorate([
+    (0, common_1.Put)('settings/discount'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update discount settings' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [settings_dto_1.UpdateDiscountSettingsDto, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateDiscountSettings", null);
+__decorate([
+    (0, common_1.Get)('categories'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all categories for product creation' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getCategories", null);
+__decorate([
+    (0, common_1.Get)('banners'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all banners including inactive' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getBanners", null);
+__decorate([
+    (0, common_1.Get)('banners/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get banner by ID' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getBanner", null);
+__decorate([
+    (0, common_1.Post)('banners'),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a new banner' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_banner_dto_1.CreateBannerDto]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "createBanner", null);
+__decorate([
+    (0, common_1.Put)('banners/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update a banner' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_banner_dto_1.UpdateBannerDto]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateBanner", null);
+__decorate([
+    (0, common_1.Delete)('banners/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete a banner' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "deleteBanner", null);
+__decorate([
+    (0, common_1.Post)('init'),
+    (0, public_decorator_1.Public)(),
+    (0, common_2.HttpCode)(200),
+    (0, swagger_1.ApiOperation)({ summary: 'Initialize default users (Super Admin, Admin, Vendor, User)' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "initializeUsers", null);
+__decorate([
+    (0, common_1.Post)('fix-superadmin'),
+    (0, public_decorator_1.Public)(),
+    (0, common_2.HttpCode)(200),
+    (0, swagger_1.ApiOperation)({ summary: 'Fix SuperAdmin role (temporary endpoint)' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "fixSuperAdmin", null);
+__decorate([
+    (0, common_1.Get)('vendors/featured'),
+    (0, public_decorator_1.Public)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all featured vendors' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getFeaturedVendors", null);
+__decorate([
+    (0, common_1.Get)('vendors'),
+    (0, public_decorator_1.Public)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all vendors' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getAllVendors", null);
+__decorate([
+    (0, common_1.Patch)('vendors/:id/featured'),
+    (0, swagger_1.ApiOperation)({ summary: 'Toggle vendor featured status' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "toggleVendorFeatured", null);
+exports.AdminController = AdminController = __decorate([
+    (0, swagger_1.ApiTags)('Admin'),
+    (0, common_1.Controller)('admin'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, admin_ip_allowlist_guard_1.AdminIpAllowlistGuard),
+    (0, roles_decorator_1.Roles)(user_schema_1.UserRole.ADMIN, user_schema_1.UserRole.SUPER_ADMIN),
+    (0, swagger_1.ApiBearerAuth)(),
+    __metadata("design:paramtypes", [admin_service_1.AdminService,
+        upload_service_1.UploadService])
+], AdminController);
+//# sourceMappingURL=admin.controller.js.map

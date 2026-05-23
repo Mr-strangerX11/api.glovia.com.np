@@ -1,0 +1,58 @@
+# .htaccess — api.glovia.com.np (NestJS Backend)
+# Place this file in the root of your cPanel subdomain document root.
+# cPanel NodeJS Selector handles the actual proxy — this file adds:
+#   1. Enforce HTTPS
+#   2. Security headers
+#   3. Block direct access to sensitive files
+#   4. Proxy fallthrough for the Node.js app
+
+Options -Indexes
+ServerSignature Off
+
+# ─── Force HTTPS ──────────────────────────────────────────────────────────────
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# ─── Security Headers ─────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  # Remove server identification headers
+  Header unset Server
+  Header unset X-Powered-By
+</IfModule>
+
+# ─── Block Access to Sensitive Files ──────────────────────────────────────────
+<FilesMatch "(\.env|\.env\..*|\.git|package\.json|tsconfig.*|nest-cli\.json)$">
+  Order allow,deny
+  Deny from all
+</FilesMatch>
+
+<FilesMatch "\.(ts|tsx|map)$">
+  Order allow,deny
+  Deny from all
+</FilesMatch>
+
+# ─── Block src/ and dist/ directory listing ───────────────────────────────────
+RedirectMatch 403 ^/(src|dist|node_modules)/
+
+# ─── Proxy all requests to Node.js app ───────────────────────────────────────
+# cPanel NodeJS Selector usually adds its own PassengerNodejs directives.
+# The rules below are a fallback for cPanel setups using mod_proxy.
+<IfModule mod_proxy.c>
+  ProxyRequests Off
+  ProxyPreserveHost On
+
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^(.*)$ http://127.0.0.1:3001/$1 [P,L]
+
+  <Proxy *>
+    Order deny,allow
+    Allow from all
+  </Proxy>
+</IfModule>

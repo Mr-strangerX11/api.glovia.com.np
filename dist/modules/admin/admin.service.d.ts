@@ -1,0 +1,613 @@
+import { Model, Types } from 'mongoose';
+import { User, UserRole } from '../../database/schemas/user.schema';
+import { Product } from '../../database/schemas/product.schema';
+import { Order, OrderStatus } from '../../database/schemas/order.schema';
+import { OrderItem } from '../../database/schemas/order-item.schema';
+import { Review } from '../../database/schemas/review.schema';
+import { Category } from '../../database/schemas/category.schema';
+import { Brand } from '../../database/schemas/brand.schema';
+import { ProductImage } from '../../database/schemas/product-image.schema';
+import { Setting } from '../../database/schemas/setting.schema';
+import { AuditLog } from '../../database/schemas/audit.schema';
+import { Address } from '../../database/schemas/address.schema';
+import { SettingVersion } from '../../database/schemas/setting-version.schema';
+import { Banner } from '../../database/schemas/banner.schema';
+import { CreateUserDto } from './dto/user.dto';
+import { UpdateProductDto, CreateProductDto } from './dto/product.dto';
+import { EmailNotificationService } from '../../common/services/email-notification.service';
+export declare class AdminService {
+    private userModel;
+    private productModel;
+    private orderModel;
+    private orderItemModel;
+    private reviewModel;
+    private categoryModel;
+    private brandModel;
+    private productImageModel;
+    private settingModel;
+    private addressModel;
+    private auditLogModel;
+    private settingVersionModel;
+    private bannerModel;
+    private emailNotificationService;
+    constructor(userModel: Model<User>, productModel: Model<Product>, orderModel: Model<Order>, orderItemModel: Model<OrderItem>, reviewModel: Model<Review>, categoryModel: Model<Category>, brandModel: Model<Brand>, productImageModel: Model<ProductImage>, settingModel: Model<Setting>, addressModel: Model<Address>, auditLogModel: Model<AuditLog>, settingVersionModel: Model<SettingVersion>, bannerModel: Model<Banner>, emailNotificationService: EmailNotificationService);
+    private sanitize;
+    getDashboard(): Promise<{
+        totalOrders: number;
+        totalRevenue: any;
+        totalCustomers: number;
+        totalUsers: number;
+        totalAdmins: number;
+        totalVendors: number;
+        totalProducts: number;
+        pendingOrders: number;
+        recentOrders: {
+            user: any;
+            orderNumber: string;
+            userId: Types.ObjectId;
+            addressId: Types.ObjectId;
+            subtotal: number;
+            discount: number;
+            deliveryCharge: number;
+            total: number;
+            status: OrderStatus;
+            paymentStatus: import("../../database/schemas/order.schema").PaymentStatus;
+            paymentMethod: import("../../database/schemas/order.schema").PaymentMethod;
+            customerNote?: string;
+            adminNote?: string;
+            trackingNumber?: string;
+            deliveryPartner?: string;
+            confirmedAt?: Date;
+            shippedAt?: Date;
+            deliveredAt?: Date;
+            cancelledAt?: Date;
+            _id: Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        topProducts: {
+            product: any;
+            totalSold: any;
+        }[];
+        revenueByMonth: any[];
+    }>;
+    createUser(createUserDto: CreateUserDto): Promise<User & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    getAllUsers(page?: number, limit?: number, role?: UserRole): Promise<{
+        data: {
+            id: string;
+            email: string;
+            phone?: string;
+            password: string;
+            firstName: string;
+            lastName: string;
+            role: UserRole;
+            permissions: {
+                canEditProducts?: boolean;
+                canViewOrders?: boolean;
+                canManageUsers?: boolean;
+                canManageBanners?: boolean;
+                canViewAnalytics?: boolean;
+                canManagePromos?: boolean;
+                canViewAuditLogs?: boolean;
+                [key: string]: boolean | undefined;
+            };
+            isEmailVerified: boolean;
+            isPhoneVerified: boolean;
+            loyaltyPoints: number;
+            skinType?: import("../../database/schemas/user.schema").SkinType;
+            profileImage?: string;
+            refreshToken?: string;
+            trustScore: number;
+            deviceFingerprint?: string;
+            ipAddress?: string;
+            failedAttempts: number;
+            isBlocked: boolean;
+            lastLoginAt?: Date;
+            isFeatured: boolean;
+            vendorDescription?: string;
+            vendorLogo?: string;
+            vendorType?: import("../../database/schemas/user.schema").VendorType;
+            isFrozen: boolean;
+            frozenAt?: Date;
+            frozenReason?: string;
+            _id: Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    updateUserRole(userId: string, role: UserRole, adminRole: UserRole): Promise<User & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    deleteUser(userId: string): Promise<User & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    freezeVendor(vendorId: string, reason?: string): Promise<User & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    unfreezeVendor(vendorId: string, reason?: string): Promise<User & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    getAllProducts(page?: number, limit?: number, categoryId?: string, brandId?: string): Promise<{
+        data: {
+            images: any[];
+            category: any;
+            brand: any;
+            name: string;
+            slug: string;
+            description: string;
+            ingredients?: string;
+            benefits?: string;
+            howToUse?: string;
+            price: number;
+            compareAtPrice?: number;
+            discountPercentage?: number;
+            costPrice?: number;
+            sku: string;
+            barcode?: string;
+            stockQuantity: number;
+            quantityMl?: number;
+            lowStockThreshold: number;
+            weight?: number;
+            categoryId: Types.ObjectId;
+            brandId?: Types.ObjectId;
+            vendorId: Types.ObjectId;
+            vendorName: string;
+            vendorEmail: string;
+            vendorPhone?: string;
+            uploadedBy?: string;
+            uploadedById?: Types.ObjectId;
+            suitableFor: import("../../database/schemas/user.schema").SkinType[];
+            isActive: boolean;
+            isFeatured: boolean;
+            isBestSeller: boolean;
+            isNewProduct: boolean;
+            metaTitle?: string;
+            metaDescription?: string;
+            tags: string[];
+            _id: Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    getProduct(productId: string): Promise<{
+        images: (ProductImage & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        })[];
+        category: Category & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        };
+        brand: Brand & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        };
+        name: string;
+        slug: string;
+        description: string;
+        ingredients?: string;
+        benefits?: string;
+        howToUse?: string;
+        price: number;
+        compareAtPrice?: number;
+        discountPercentage?: number;
+        costPrice?: number;
+        sku: string;
+        barcode?: string;
+        stockQuantity: number;
+        quantityMl?: number;
+        lowStockThreshold: number;
+        weight?: number;
+        categoryId: Types.ObjectId;
+        brandId?: Types.ObjectId;
+        vendorId: Types.ObjectId;
+        vendorName: string;
+        vendorEmail: string;
+        vendorPhone?: string;
+        uploadedBy?: string;
+        uploadedById?: Types.ObjectId;
+        suitableFor: import("../../database/schemas/user.schema").SkinType[];
+        isActive: boolean;
+        isFeatured: boolean;
+        isBestSeller: boolean;
+        isNewProduct: boolean;
+        metaTitle?: string;
+        metaDescription?: string;
+        tags: string[];
+        _id: Types.ObjectId;
+        $locals: Record<string, unknown>;
+        $op: "save" | "validate" | "remove" | null;
+        $where: Record<string, unknown>;
+        baseModelName?: string;
+        collection: import("mongoose").Collection;
+        db: import("mongoose").Connection;
+        errors?: import("mongoose").Error.ValidationError;
+        isNew: boolean;
+        schema: import("mongoose").Schema;
+        __v: number;
+    }>;
+    createProduct(createProductDto: CreateProductDto): Promise<import("mongoose").Document<unknown, {}, Product, {}, import("mongoose").DefaultSchemaOptions> & Product & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    } & {
+        id: string;
+    }>;
+    updateProduct(productId: string, updateProductDto: UpdateProductDto): Promise<Product & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    deleteProduct(productId: string): Promise<Product & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    bulkCreateProducts(rows: any[]): Promise<{
+        success: number;
+        failed: number;
+        results: any[];
+    }>;
+    getOrderDetails(orderId: string): Promise<{
+        user: User & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        };
+        items: (OrderItem & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        })[];
+        orderNumber: string;
+        userId: Types.ObjectId;
+        addressId: Types.ObjectId;
+        subtotal: number;
+        discount: number;
+        deliveryCharge: number;
+        total: number;
+        status: OrderStatus;
+        paymentStatus: import("../../database/schemas/order.schema").PaymentStatus;
+        paymentMethod: import("../../database/schemas/order.schema").PaymentMethod;
+        customerNote?: string;
+        adminNote?: string;
+        trackingNumber?: string;
+        deliveryPartner?: string;
+        confirmedAt?: Date;
+        shippedAt?: Date;
+        deliveredAt?: Date;
+        cancelledAt?: Date;
+        _id: Types.ObjectId;
+        $locals: Record<string, unknown>;
+        $op: "save" | "validate" | "remove" | null;
+        $where: Record<string, unknown>;
+        baseModelName?: string;
+        collection: import("mongoose").Collection;
+        db: import("mongoose").Connection;
+        errors?: import("mongoose").Error.ValidationError;
+        isNew: boolean;
+        schema: import("mongoose").Schema;
+        __v: number;
+    }>;
+    getAllOrders(page?: number, limit?: number, status?: OrderStatus): Promise<{
+        data: {
+            user: any;
+            items: any[];
+            orderNumber: string;
+            userId: Types.ObjectId;
+            addressId: Types.ObjectId;
+            subtotal: number;
+            discount: number;
+            deliveryCharge: number;
+            total: number;
+            status: OrderStatus;
+            paymentStatus: import("../../database/schemas/order.schema").PaymentStatus;
+            paymentMethod: import("../../database/schemas/order.schema").PaymentMethod;
+            customerNote?: string;
+            adminNote?: string;
+            trackingNumber?: string;
+            deliveryPartner?: string;
+            confirmedAt?: Date;
+            shippedAt?: Date;
+            deliveredAt?: Date;
+            cancelledAt?: Date;
+            _id: Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    updateOrderStatus(orderId: string, status: OrderStatus): Promise<Order & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    deleteOrder(orderId: string): Promise<{
+        message: string;
+        deletedOrderId: string;
+    }>;
+    private sendOrderConfirmationEmail;
+    private sendOrderStatusChangedEmail;
+    getAllCustomers(page?: number, limit?: number): Promise<{
+        data: {
+            id: string;
+            orderCount: any;
+            totalSpent: any;
+            email: string;
+            phone?: string;
+            password: string;
+            firstName: string;
+            lastName: string;
+            role: UserRole;
+            permissions: {
+                canEditProducts?: boolean;
+                canViewOrders?: boolean;
+                canManageUsers?: boolean;
+                canManageBanners?: boolean;
+                canViewAnalytics?: boolean;
+                canManagePromos?: boolean;
+                canViewAuditLogs?: boolean;
+                [key: string]: boolean | undefined;
+            };
+            isEmailVerified: boolean;
+            isPhoneVerified: boolean;
+            loyaltyPoints: number;
+            skinType?: import("../../database/schemas/user.schema").SkinType;
+            profileImage?: string;
+            refreshToken?: string;
+            trustScore: number;
+            deviceFingerprint?: string;
+            ipAddress?: string;
+            failedAttempts: number;
+            isBlocked: boolean;
+            lastLoginAt?: Date;
+            isFeatured: boolean;
+            vendorDescription?: string;
+            vendorLogo?: string;
+            vendorType?: import("../../database/schemas/user.schema").VendorType;
+            isFrozen: boolean;
+            frozenAt?: Date;
+            frozenReason?: string;
+            _id: Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    getAllReviews(page?: number, limit?: number, approved?: boolean): Promise<{
+        data: {
+            user: any;
+            product: any;
+            productId: Types.ObjectId;
+            userId: Types.ObjectId;
+            rating: number;
+            title?: string;
+            comment: string;
+            isVerified: boolean;
+            isApproved: boolean;
+            _id: Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    approveReview(reviewId: string): Promise<Review & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    deleteReview(reviewId: string): Promise<Review & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    updateDeliverySettings(data: {
+        freeDeliveryThreshold: number;
+        valleyDeliveryCharge: number;
+        outsideValleyDeliveryCharge: number;
+    }, user?: {
+        userId?: string;
+        username?: string;
+    }): Promise<Setting & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    getDeliverySettings(): Promise<any>;
+    updateAnnouncementBar(data: {
+        enabled?: boolean;
+        message?: string;
+        backgroundColor?: string;
+        textColor?: string;
+    }, user?: {
+        userId?: string;
+        username?: string;
+    }): Promise<Setting & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    getAnnouncementBar(): Promise<any>;
+    updateDiscountSettings(data: {
+        enabled: boolean;
+        percentage?: number;
+        minOrderAmount?: number;
+    }, user?: {
+        userId?: string;
+        username?: string;
+    }): Promise<Setting & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    getDiscountSettings(): Promise<any>;
+    getAllCategories(): Promise<{
+        data: (Category & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        })[];
+        count: number;
+        message: string;
+    }>;
+    seedInitialUsers(): Promise<any[]>;
+    fixSuperAdminRole(): Promise<{
+        email: string;
+        role: UserRole.SUPER_ADMIN;
+        status: string;
+        oldRole?: undefined;
+        newRole?: undefined;
+    } | {
+        email: string;
+        oldRole: UserRole.CUSTOMER | UserRole.ADMIN | UserRole.VENDOR | UserRole.EDITOR | UserRole.MARKETING | UserRole.AUDITOR;
+        newRole: UserRole;
+        status: string;
+        role?: undefined;
+    }>;
+    getAllBanners(): Promise<(Banner & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    })[]>;
+    getBanner(id: string): Promise<Banner & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    createBanner(createBannerDto: any): Promise<import("mongoose").Document<unknown, {}, Banner, {}, import("mongoose").DefaultSchemaOptions> & Banner & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    } & {
+        id: string;
+    }>;
+    updateBanner(id: string, updateBannerDto: any): Promise<import("mongoose").Document<unknown, {}, Banner, {}, import("mongoose").DefaultSchemaOptions> & Banner & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    } & {
+        id: string;
+    }>;
+    deleteBanner(id: string): Promise<{
+        message: string;
+    }>;
+    getFeaturedVendors(): Promise<{
+        status: string;
+        data: (User & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        })[];
+        count: number;
+    }>;
+    getAllVendors(): Promise<{
+        status: string;
+        data: (User & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        })[];
+        count: number;
+    }>;
+    toggleVendorFeatured(vendorId: string): Promise<{
+        status: string;
+        message: string;
+        data: {
+            _id: Types.ObjectId;
+            email: string;
+            firstName: string;
+            lastName: string;
+            isFeatured: boolean;
+        };
+    }>;
+}

@@ -1,0 +1,91 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.UploadService = exports.ALLOWED_IMAGE_MIME_TYPES = exports.MAX_UPLOAD_SIZE_BYTES = void 0;
+exports.imageFileFilter = imageFileFilter;
+const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
+const cloudinary_1 = require("cloudinary");
+const streamifier = require("streamifier");
+exports.MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
+exports.ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+function imageFileFilter(_req, file, callback) {
+    if (!exports.ALLOWED_IMAGE_MIME_TYPES.includes(file.mimetype)) {
+        return callback(new common_1.BadRequestException('Invalid file type. Only JPEG, PNG, and WebP allowed'), false);
+    }
+    callback(null, true);
+}
+let UploadService = class UploadService {
+    constructor(configService) {
+        this.configService = configService;
+        cloudinary_1.v2.config({
+            cloud_name: this.configService.get('CLOUDINARY_CLOUD_NAME'),
+            api_key: this.configService.get('CLOUDINARY_API_KEY'),
+            api_secret: this.configService.get('CLOUDINARY_API_SECRET'),
+        });
+    }
+    async uploadImage(file, folder = 'glovia') {
+        const cloudName = this.configService.get('CLOUDINARY_CLOUD_NAME');
+        const apiKey = this.configService.get('CLOUDINARY_API_KEY');
+        const apiSecret = this.configService.get('CLOUDINARY_API_SECRET');
+        if (!cloudName || !apiKey || !apiSecret) {
+            throw new common_1.BadRequestException('Image upload is not configured. Set Cloudinary credentials.');
+        }
+        if (!file) {
+            throw new common_1.BadRequestException('No file provided');
+        }
+        if (file.size && file.size > exports.MAX_UPLOAD_SIZE_BYTES) {
+            throw new common_1.BadRequestException('File too large. Maximum size is 5MB');
+        }
+        if (!exports.ALLOWED_IMAGE_MIME_TYPES.includes(file.mimetype)) {
+            throw new common_1.BadRequestException('Invalid file type. Only JPEG, PNG, and WebP allowed');
+        }
+        return new Promise((resolve, reject) => {
+            const uploadStream = cloudinary_1.v2.uploader.upload_stream({
+                folder,
+                transformation: [
+                    { width: 1200, crop: 'limit' },
+                    { quality: 'auto' },
+                    { fetch_format: 'auto' },
+                ],
+            }, (error, result) => {
+                if (error) {
+                    reject(new common_1.BadRequestException(error?.message || 'Upload failed'));
+                }
+                else {
+                    resolve(result.secure_url);
+                }
+            });
+            streamifier.createReadStream(file.buffer).pipe(uploadStream);
+        });
+    }
+    async uploadMultiple(files, folder = 'glovia') {
+        if (files.some((file) => file.size && file.size > exports.MAX_UPLOAD_SIZE_BYTES)) {
+            throw new common_1.BadRequestException('One or more files exceed the 5MB limit');
+        }
+        const uploadPromises = files.map((file) => this.uploadImage(file, folder));
+        return Promise.all(uploadPromises);
+    }
+    async deleteImage(publicId) {
+        try {
+            await cloudinary_1.v2.uploader.destroy(publicId);
+        }
+        catch (error) {
+            throw new common_1.BadRequestException('Failed to delete image');
+        }
+    }
+};
+exports.UploadService = UploadService;
+exports.UploadService = UploadService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [config_1.ConfigService])
+], UploadService);
+//# sourceMappingURL=upload.service.js.map

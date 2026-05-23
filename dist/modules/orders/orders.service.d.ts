@@ -1,0 +1,266 @@
+import { Model, Types } from 'mongoose';
+import { CreateOrderDto } from './dto/orders.dto';
+import { OrderStatus, PaymentMethod, PaymentStatus } from '../../database/schemas/order.schema';
+import { ConfigService } from '@nestjs/config';
+import { Order } from '../../database/schemas/order.schema';
+import { OrderItem } from '../../database/schemas/order-item.schema';
+import { Product } from '../../database/schemas/product.schema';
+import { Address } from '../../database/schemas/address.schema';
+import { Payment } from '../../database/schemas/payment.schema';
+import { CartItem } from '../../database/schemas/cart-item.schema';
+import { Coupon } from '../../database/schemas/coupon.schema';
+import { ProductImage } from '../../database/schemas/product-image.schema';
+import { EmailNotificationService } from '../../common/services/email-notification.service';
+import { User } from '../../database/schemas/user.schema';
+import { TrackOrderDto } from './dto/orders.dto';
+export declare class OrdersService {
+    private orderModel;
+    private orderItemModel;
+    private productModel;
+    private addressModel;
+    private paymentModel;
+    private cartItemModel;
+    private couponModel;
+    private productImageModel;
+    private userModel;
+    private configService;
+    private readonly emailNotificationService;
+    constructor(orderModel: Model<Order>, orderItemModel: Model<OrderItem>, productModel: Model<Product>, addressModel: Model<Address>, paymentModel: Model<Payment>, cartItemModel: Model<CartItem>, couponModel: Model<Coupon>, productImageModel: Model<ProductImage>, userModel: Model<User>, configService: ConfigService, emailNotificationService: EmailNotificationService);
+    create(userId: string, dto: CreateOrderDto): Promise<{
+        items: {
+            images: any[];
+            orderId: Types.ObjectId;
+            productId: Types.ObjectId;
+            vendorId: Types.ObjectId;
+            vendorName: string;
+            vendorEmail: string;
+            vendorPhone?: string;
+            productName: string;
+            productSku?: string;
+            quantity: number;
+            price: number;
+            total: number;
+            _id: Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        address: Address & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        };
+        payment: Payment & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        };
+        orderNumber: string;
+        userId: Types.ObjectId;
+        addressId: Types.ObjectId;
+        subtotal: number;
+        discount: number;
+        deliveryCharge: number;
+        total: number;
+        status: OrderStatus;
+        paymentStatus: PaymentStatus;
+        paymentMethod: PaymentMethod;
+        customerNote?: string;
+        adminNote?: string;
+        trackingNumber?: string;
+        deliveryPartner?: string;
+        confirmedAt?: Date;
+        shippedAt?: Date;
+        deliveredAt?: Date;
+        cancelledAt?: Date;
+        _id: Types.ObjectId;
+        $locals: Record<string, unknown>;
+        $op: "save" | "validate" | "remove" | null;
+        $where: Record<string, unknown>;
+        baseModelName?: string;
+        collection: import("mongoose").Collection;
+        db: import("mongoose").Connection;
+        errors?: import("mongoose").Error.ValidationError;
+        isNew: boolean;
+        schema: import("mongoose").Schema;
+        __v: number;
+    }>;
+    findAll(userId: string, filters?: {
+        status?: OrderStatus;
+    }): Promise<{
+        items: any[];
+        address: any;
+        payment: any;
+        orderNumber: string;
+        userId: Types.ObjectId;
+        addressId: Types.ObjectId;
+        subtotal: number;
+        discount: number;
+        deliveryCharge: number;
+        total: number;
+        status: OrderStatus;
+        paymentStatus: PaymentStatus;
+        paymentMethod: PaymentMethod;
+        customerNote?: string;
+        adminNote?: string;
+        trackingNumber?: string;
+        deliveryPartner?: string;
+        confirmedAt?: Date;
+        shippedAt?: Date;
+        deliveredAt?: Date;
+        cancelledAt?: Date;
+        _id: Types.ObjectId;
+        $locals: Record<string, unknown>;
+        $op: "save" | "validate" | "remove" | null;
+        $where: Record<string, unknown>;
+        baseModelName?: string;
+        collection: import("mongoose").Collection;
+        db: import("mongoose").Connection;
+        errors?: import("mongoose").Error.ValidationError;
+        isNew: boolean;
+        schema: import("mongoose").Schema;
+        __v: number;
+    }[]>;
+    findOne(userId: string, orderId: string): Promise<{
+        items: {
+            images: any[];
+            orderId: Types.ObjectId;
+            productId: Types.ObjectId;
+            vendorId: Types.ObjectId;
+            vendorName: string;
+            vendorEmail: string;
+            vendorPhone?: string;
+            productName: string;
+            productSku?: string;
+            quantity: number;
+            price: number;
+            total: number;
+            _id: Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        address: Address & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        };
+        payment: Payment & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        };
+        orderNumber: string;
+        userId: Types.ObjectId;
+        addressId: Types.ObjectId;
+        subtotal: number;
+        discount: number;
+        deliveryCharge: number;
+        total: number;
+        status: OrderStatus;
+        paymentStatus: PaymentStatus;
+        paymentMethod: PaymentMethod;
+        customerNote?: string;
+        adminNote?: string;
+        trackingNumber?: string;
+        deliveryPartner?: string;
+        confirmedAt?: Date;
+        shippedAt?: Date;
+        deliveredAt?: Date;
+        cancelledAt?: Date;
+        _id: Types.ObjectId;
+        $locals: Record<string, unknown>;
+        $op: "save" | "validate" | "remove" | null;
+        $where: Record<string, unknown>;
+        baseModelName?: string;
+        collection: import("mongoose").Collection;
+        db: import("mongoose").Connection;
+        errors?: import("mongoose").Error.ValidationError;
+        isNew: boolean;
+        schema: import("mongoose").Schema;
+        __v: number;
+    }>;
+    cancelOrder(userId: string, orderId: string): Promise<Order & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    trackOrder(dto: TrackOrderDto): Promise<{
+        _id: Types.ObjectId;
+        orderNumber: string;
+        status: OrderStatus;
+        createdAt: any;
+        confirmedAt: Date;
+        shippedAt: Date;
+        deliveredAt: Date;
+        cancelledAt: Date;
+        trackingNumber: string;
+        deliveryPartner: string;
+        paymentMethod: PaymentMethod;
+        paymentStatus: PaymentStatus;
+        subtotal: number;
+        discount: number;
+        deliveryCharge: number;
+        total: number;
+        customerName: string;
+        items: {
+            product: any;
+            images: any[];
+            orderId: Types.ObjectId;
+            productId: Types.ObjectId;
+            vendorId: Types.ObjectId;
+            vendorName: string;
+            vendorEmail: string;
+            vendorPhone?: string;
+            productName: string;
+            productSku?: string;
+            quantity: number;
+            price: number;
+            total: number;
+            _id: Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        address: Address & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        };
+        payment: Payment & Required<{
+            _id: Types.ObjectId;
+        }> & {
+            __v: number;
+        };
+        timeline: {
+            key: string;
+            label: string;
+            at: any;
+        }[];
+    }>;
+    private generateOrderNumber;
+    private normalizePhone;
+    private calculateDeliveryCharge;
+    private calculateDiscount;
+}

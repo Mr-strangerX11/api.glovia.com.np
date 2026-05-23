@@ -1,0 +1,1442 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AdminService = void 0;
+const common_1 = require("@nestjs/common");
+const mongoose_1 = require("@nestjs/mongoose");
+const mongoose_2 = require("mongoose");
+const bcrypt = require("bcryptjs");
+const user_schema_1 = require("../../database/schemas/user.schema");
+const product_schema_1 = require("../../database/schemas/product.schema");
+const order_schema_1 = require("../../database/schemas/order.schema");
+const order_item_schema_1 = require("../../database/schemas/order-item.schema");
+const review_schema_1 = require("../../database/schemas/review.schema");
+const category_schema_1 = require("../../database/schemas/category.schema");
+const brand_schema_1 = require("../../database/schemas/brand.schema");
+const product_image_schema_1 = require("../../database/schemas/product-image.schema");
+const setting_schema_1 = require("../../database/schemas/setting.schema");
+const audit_schema_1 = require("../../database/schemas/audit.schema");
+const address_schema_1 = require("../../database/schemas/address.schema");
+const setting_version_schema_1 = require("../../database/schemas/setting-version.schema");
+const banner_schema_1 = require("../../database/schemas/banner.schema");
+const email_notification_service_1 = require("../../common/services/email-notification.service");
+let AdminService = class AdminService {
+    constructor(userModel, productModel, orderModel, orderItemModel, reviewModel, categoryModel, brandModel, productImageModel, settingModel, addressModel, auditLogModel, settingVersionModel, bannerModel, emailNotificationService) {
+        this.userModel = userModel;
+        this.productModel = productModel;
+        this.orderModel = orderModel;
+        this.orderItemModel = orderItemModel;
+        this.reviewModel = reviewModel;
+        this.categoryModel = categoryModel;
+        this.brandModel = brandModel;
+        this.productImageModel = productImageModel;
+        this.settingModel = settingModel;
+        this.addressModel = addressModel;
+        this.auditLogModel = auditLogModel;
+        this.settingVersionModel = settingVersionModel;
+        this.bannerModel = bannerModel;
+        this.emailNotificationService = emailNotificationService;
+    }
+    sanitize(str) {
+        return typeof str === 'string' ? str.replace(/[<>"'`;]/g, '') : str;
+    }
+    async getDashboard() {
+        const cancelledStatuses = [order_schema_1.OrderStatus.CANCELLED, 'CANCELED'];
+        const totalOrders = await this.orderModel.countDocuments();
+        const totalRevenue = await this.orderModel.aggregate([
+            {
+                $match: {
+                    status: { $nin: cancelledStatuses },
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    sum: { $sum: '$total' },
+                },
+            },
+        ]);
+        const totalCustomers = await this.userModel.countDocuments({ role: user_schema_1.UserRole.CUSTOMER });
+        const totalUsers = await this.userModel.countDocuments();
+        const totalAdmins = await this.userModel.countDocuments({ role: user_schema_1.UserRole.ADMIN });
+        const totalVendors = await this.userModel.countDocuments({ role: user_schema_1.UserRole.VENDOR });
+        const totalProducts = await this.productModel.countDocuments();
+        const pendingOrders = await this.orderModel.countDocuments({ status: order_schema_1.OrderStatus.PENDING });
+        const recentOrders = await this.orderModel.find().sort({ createdAt: -1 }).limit(10).lean();
+        const userIds = [...new Set(recentOrders.map((o) => o?.userId?.toString?.()).filter(Boolean))];
+        const users = await this.userModel.find({ _id: { $in: userIds } }).lean();
+        const userMap = users.reduce((acc, u) => {
+            acc[u._id.toString()] = u;
+            return acc;
+        }, {});
+        const recentOrdersWithUsers = recentOrders.map((order) => ({
+            ...order,
+            user: order?.userId ? userMap[order.userId.toString()] || null : null,
+        }));
+        const topProducts = await this.orderItemModel.aggregate([
+            {
+                $group: {
+                    _id: '$productId',
+                    totalSold: { $sum: '$quantity' },
+                },
+            },
+            { $sort: { totalSold: -1 } },
+            { $limit: 5 },
+        ]);
+        const productIds = topProducts.map((p) => p._id);
+        const products = await this.productModel.find({ _id: { $in: productIds } }).lean();
+        const productMap = products.reduce((acc, p) => {
+            acc[p._id.toString()] = p;
+            return acc;
+        }, {});
+        const topProductsWithDetails = topProducts.map((item) => ({
+            product: productMap[item._id.toString()] || null,
+            totalSold: item.totalSold,
+        }));
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const revenueByMonth = await this.orderModel.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: sixMonthsAgo },
+                    status: { $nin: cancelledStatuses },
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: '$createdAt' },
+                        month: { $month: '$createdAt' },
+                    },
+                    revenue: { $sum: '$total' },
+                },
+            },
+            { $sort: { '_id.year': 1, '_id.month': 1 } },
+        ]);
+        return {
+            totalOrders,
+            totalRevenue: totalRevenue[0]?.sum || 0,
+            totalCustomers,
+            totalUsers,
+            totalAdmins,
+            totalVendors,
+            totalProducts,
+            pendingOrders,
+            recentOrders: recentOrdersWithUsers,
+            topProducts: topProductsWithDetails,
+            revenueByMonth,
+        };
+    }
+    async createUser(createUserDto) {
+        const existingUser = await this.userModel.findOne({ email: createUserDto.email }).lean();
+        if (existingUser) {
+            throw new common_1.BadRequestException('User with this email already exists');
+        }
+        const strong = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+        if ((createUserDto.role === user_schema_1.UserRole.ADMIN ||
+            createUserDto.role === user_schema_1.UserRole.SUPER_ADMIN ||
+            createUserDto.role === user_schema_1.UserRole.VENDOR) &&
+            !strong.test(createUserDto.password)) {
+            throw new common_1.BadRequestException('Password must be at least 8 characters and include uppercase, lowercase, number, and special character.');
+        }
+        const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+        const user = await this.userModel.create({
+            ...createUserDto,
+            password: hashedPassword,
+        });
+        return user.toObject();
+    }
+    async getAllUsers(page = 1, limit = 10, role) {
+        const skip = (page - 1) * limit;
+        const filter = role ? { role } : {};
+        const [users, total] = await Promise.all([
+            this.userModel.find(filter).skip(skip).limit(limit).lean(),
+            this.userModel.countDocuments(filter),
+        ]);
+        const usersWithId = users.map((user) => ({
+            ...user,
+            id: user._id.toString(),
+        }));
+        return {
+            data: usersWithId,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+    async updateUserRole(userId, role, adminRole) {
+        if (!mongoose_2.Types.ObjectId.isValid(userId)) {
+            throw new common_1.BadRequestException('Invalid user ID');
+        }
+        const user = await this.userModel.findById(userId).lean();
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        if (role === user_schema_1.UserRole.SUPER_ADMIN || user.role === user_schema_1.UserRole.SUPER_ADMIN) {
+            if (adminRole !== user_schema_1.UserRole.SUPER_ADMIN) {
+                throw new common_1.ForbiddenException('Only SUPER_ADMIN can modify SUPER_ADMIN roles');
+            }
+        }
+        return this.userModel.findByIdAndUpdate(userId, { role }, { new: true }).lean();
+    }
+    async deleteUser(userId) {
+        if (!mongoose_2.Types.ObjectId.isValid(userId)) {
+            throw new common_1.BadRequestException('Invalid user ID');
+        }
+        const user = await this.userModel.findByIdAndDelete(userId).lean();
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        return user;
+    }
+    async freezeVendor(vendorId, reason) {
+        if (!mongoose_2.Types.ObjectId.isValid(vendorId)) {
+            throw new common_1.BadRequestException('Invalid vendor ID');
+        }
+        const vendor = await this.userModel.findById(vendorId).lean();
+        if (!vendor) {
+            throw new common_1.NotFoundException('Vendor not found');
+        }
+        if (vendor.role !== user_schema_1.UserRole.VENDOR) {
+            throw new common_1.BadRequestException('User is not a vendor');
+        }
+        return this.userModel
+            .findByIdAndUpdate(vendorId, {
+            isFrozen: true,
+            frozenAt: new Date(),
+            frozenReason: reason || 'Account frozen by admin',
+        }, { new: true })
+            .lean();
+    }
+    async unfreezeVendor(vendorId, reason) {
+        if (!mongoose_2.Types.ObjectId.isValid(vendorId)) {
+            throw new common_1.BadRequestException('Invalid vendor ID');
+        }
+        const vendor = await this.userModel.findById(vendorId).lean();
+        if (!vendor) {
+            throw new common_1.NotFoundException('Vendor not found');
+        }
+        if (vendor.role !== user_schema_1.UserRole.VENDOR) {
+            throw new common_1.BadRequestException('User is not a vendor');
+        }
+        return this.userModel
+            .findByIdAndUpdate(vendorId, {
+            isFrozen: false,
+            frozenAt: null,
+            frozenReason: reason || 'Account unfrozen by admin',
+        }, { new: true })
+            .lean();
+    }
+    async getAllProducts(page = 1, limit = 10, categoryId, brandId) {
+        const skip = (page - 1) * limit;
+        const filter = {};
+        if (categoryId && mongoose_2.Types.ObjectId.isValid(categoryId)) {
+            filter.categoryId = new mongoose_2.Types.ObjectId(categoryId);
+        }
+        if (brandId && mongoose_2.Types.ObjectId.isValid(brandId)) {
+            filter.brandId = new mongoose_2.Types.ObjectId(brandId);
+        }
+        const [products, total] = await Promise.all([
+            this.productModel.find(filter).skip(skip).limit(limit).lean(),
+            this.productModel.countDocuments(filter),
+        ]);
+        const productIds = products.map((p) => p._id);
+        const categoryIds = [...new Set(products.map((p) => p.categoryId?.toString()).filter(Boolean))];
+        const brandIds = [...new Set(products.map((p) => p.brandId?.toString()).filter(Boolean))];
+        const [images, categories, brands] = await Promise.all([
+            this.productImageModel.find({ productId: { $in: productIds } }).lean(),
+            this.categoryModel.find({ _id: { $in: categoryIds } }).lean(),
+            this.brandModel.find({ _id: { $in: brandIds } }).lean(),
+        ]);
+        const imagesByProduct = images.reduce((acc, img) => {
+            const key = img.productId.toString();
+            if (!acc[key])
+                acc[key] = [];
+            acc[key].push(img);
+            return acc;
+        }, {});
+        const categoryMap = categories.reduce((acc, c) => {
+            acc[c._id.toString()] = c;
+            return acc;
+        }, {});
+        const brandMap = brands.reduce((acc, b) => {
+            acc[b._id.toString()] = b;
+            return acc;
+        }, {});
+        const productsWithRelations = products.map((product) => ({
+            ...product,
+            images: imagesByProduct[product._id.toString()] || [],
+            category: product.categoryId ? categoryMap[product.categoryId.toString()] || null : null,
+            brand: product.brandId ? brandMap[product.brandId.toString()] || null : null,
+        }));
+        return {
+            data: productsWithRelations,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+    async getProduct(productId) {
+        if (!mongoose_2.Types.ObjectId.isValid(productId)) {
+            throw new common_1.BadRequestException('Invalid product ID');
+        }
+        const product = await this.productModel.findById(productId).lean();
+        if (!product) {
+            throw new common_1.NotFoundException('Product not found');
+        }
+        const [images, category, brand] = await Promise.all([
+            this.productImageModel.find({ productId: new mongoose_2.Types.ObjectId(productId) }).lean(),
+            product.categoryId ? this.categoryModel.findById(product.categoryId).lean() : null,
+            product.brandId ? this.brandModel.findById(product.brandId).lean() : null,
+        ]);
+        return {
+            ...product,
+            images,
+            category,
+            brand,
+        };
+    }
+    async createProduct(createProductDto) {
+        const { images, categoryId, brandId, vendorId, isNew, ...productData } = createProductDto;
+        try {
+            if (!mongoose_2.Types.ObjectId.isValid(categoryId)) {
+                throw new common_1.BadRequestException('Invalid category ID');
+            }
+            const category = await this.categoryModel.findById(categoryId).lean();
+            if (!category) {
+                throw new common_1.NotFoundException('Category not found');
+            }
+            if (brandId) {
+                if (!mongoose_2.Types.ObjectId.isValid(brandId)) {
+                    throw new common_1.BadRequestException('Invalid brand ID');
+                }
+                const brand = await this.brandModel.findById(brandId).lean();
+                if (!brand) {
+                    throw new common_1.NotFoundException('Brand not found');
+                }
+            }
+            let vendorName = null;
+            let vendorEmail = null;
+            let vendorPhone = null;
+            if (vendorId) {
+                if (!mongoose_2.Types.ObjectId.isValid(vendorId)) {
+                    throw new common_1.BadRequestException('Invalid vendor ID');
+                }
+                const vendor = await this.userModel.findById(vendorId).lean();
+                if (!vendor) {
+                    throw new common_1.NotFoundException('Vendor not found');
+                }
+                vendorName =
+                    vendor.firstName && vendor.lastName
+                        ? `${vendor.firstName} ${vendor.lastName}`
+                        : vendor.firstName || 'Unknown Vendor';
+                vendorEmail = vendor.email;
+                vendorPhone = vendor.phone || null;
+            }
+            const existingSku = await this.productModel.findOne({ sku: productData.sku });
+            if (existingSku) {
+                throw new common_1.BadRequestException('SKU must be unique');
+            }
+            const existingSlug = await this.productModel.findOne({ slug: productData.slug });
+            if (existingSlug) {
+                throw new common_1.BadRequestException('Slug must be unique');
+            }
+            const sanitizedData = {};
+            for (const key in productData) {
+                sanitizedData[key] = this.sanitize(productData[key]);
+            }
+            const product = new this.productModel({
+                ...sanitizedData,
+                categoryId: new mongoose_2.Types.ObjectId(categoryId),
+                brandId: brandId ? new mongoose_2.Types.ObjectId(brandId) : null,
+                vendorId: vendorId ? new mongoose_2.Types.ObjectId(vendorId) : null,
+                vendorName: vendorName,
+                vendorEmail: vendorEmail,
+                vendorPhone: vendorPhone,
+                isNewProduct: isNew !== undefined ? isNew : false,
+            });
+            const savedProduct = await product.save();
+            if (images && Array.isArray(images) && images.length > 0) {
+                const imageDocuments = images.map((url, index) => ({
+                    productId: savedProduct._id,
+                    url: this.sanitize(url),
+                    isPrimary: index === 0,
+                    altText: null,
+                }));
+                await this.productImageModel.insertMany(imageDocuments);
+            }
+            return savedProduct;
+        }
+        catch (error) {
+            console.error('Product creation failed:', error?.message || error);
+            throw error;
+        }
+    }
+    async updateProduct(productId, updateProductDto) {
+        if (!mongoose_2.Types.ObjectId.isValid(productId)) {
+            throw new common_1.BadRequestException('Invalid product ID format');
+        }
+        const product = await this.productModel.findById(productId).lean();
+        if (!product) {
+            throw new common_1.NotFoundException('Product not found');
+        }
+        const { images, isNew, categoryId, brandId, vendorId, ...productData } = updateProductDto;
+        const updateData = { ...productData };
+        if (isNew !== undefined) {
+            updateData.isNewProduct = isNew;
+        }
+        if (categoryId !== undefined) {
+            if (!categoryId) {
+                updateData.categoryId = null;
+            }
+            else if (!mongoose_2.Types.ObjectId.isValid(categoryId)) {
+                throw new common_1.BadRequestException(`Invalid category ID format: ${categoryId}`);
+            }
+            else {
+                const categoryExists = await this.categoryModel.findById(categoryId).lean();
+                if (!categoryExists) {
+                    throw new common_1.BadRequestException(`Category not found with ID: ${categoryId}`);
+                }
+                updateData.categoryId = new mongoose_2.Types.ObjectId(categoryId);
+            }
+        }
+        if (brandId !== undefined) {
+            if (!brandId) {
+                updateData.brandId = null;
+            }
+            else if (!mongoose_2.Types.ObjectId.isValid(brandId)) {
+                throw new common_1.BadRequestException(`Invalid brand ID format: ${brandId}`);
+            }
+            else {
+                const brandExists = await this.brandModel.findById(brandId).lean();
+                if (!brandExists) {
+                    throw new common_1.BadRequestException(`Brand not found with ID: ${brandId}`);
+                }
+                updateData.brandId = new mongoose_2.Types.ObjectId(brandId);
+            }
+        }
+        if (vendorId !== undefined) {
+            if (!vendorId) {
+                updateData.vendorId = null;
+            }
+            else if (!mongoose_2.Types.ObjectId.isValid(vendorId)) {
+                throw new common_1.BadRequestException(`Invalid vendor ID format: ${vendorId}`);
+            }
+            else {
+                const vendorExists = await this.userModel.findById(vendorId).lean();
+                if (!vendorExists) {
+                    throw new common_1.BadRequestException(`Vendor not found with ID: ${vendorId}`);
+                }
+                updateData.vendorId = new mongoose_2.Types.ObjectId(vendorId);
+            }
+        }
+        if (updateData.price !== undefined &&
+            (typeof updateData.price !== 'number' || updateData.price < 0)) {
+            throw new common_1.BadRequestException('Price must be a non-negative number');
+        }
+        if (updateData.stockQuantity !== undefined &&
+            (typeof updateData.stockQuantity !== 'number' || updateData.stockQuantity < 0)) {
+            throw new common_1.BadRequestException('Stock quantity must be a non-negative number');
+        }
+        if (updateData.compareAtPrice !== undefined &&
+            updateData.compareAtPrice !== null &&
+            (typeof updateData.compareAtPrice !== 'number' || updateData.compareAtPrice < 0)) {
+            throw new common_1.BadRequestException('Compare at price must be a non-negative number');
+        }
+        const updatedProduct = await this.productModel
+            .findByIdAndUpdate(productId, updateData, { new: true })
+            .lean();
+        if (images && Array.isArray(images)) {
+            await this.productImageModel.deleteMany({ productId: new mongoose_2.Types.ObjectId(productId) });
+            if (images.length > 0) {
+                const newImages = images.map((img, index) => ({
+                    productId: new mongoose_2.Types.ObjectId(productId),
+                    url: typeof img === 'string' ? img : img.url,
+                    altText: (typeof img === 'object' && img.altText) || null,
+                    isPrimary: (typeof img === 'object' && img.isPrimary) || index === 0,
+                }));
+                await this.productImageModel.insertMany(newImages);
+            }
+        }
+        return updatedProduct;
+    }
+    async deleteProduct(productId) {
+        if (!mongoose_2.Types.ObjectId.isValid(productId)) {
+            throw new common_1.BadRequestException('Invalid product ID');
+        }
+        const product = await this.productModel.findByIdAndDelete(productId).lean();
+        if (!product) {
+            throw new common_1.NotFoundException('Product not found');
+        }
+        await this.productImageModel.deleteMany({ productId: new mongoose_2.Types.ObjectId(productId) });
+        return product;
+    }
+    async bulkCreateProducts(rows) {
+        const results = [];
+        let success = 0;
+        let failed = 0;
+        const skus = new Set();
+        const slugs = new Set();
+        const categoryIds = new Set();
+        const brandIds = new Set();
+        const vendorIds = new Set();
+        const categoryNames = new Set();
+        const brandNames = new Set();
+        const vendorEmails = new Set();
+        for (const row of rows) {
+            if (row.sku)
+                skus.add(this.sanitize(row.sku));
+            if (row.slug)
+                slugs.add(this.sanitize(row.slug));
+            const catVal = row.categoryId || row.category || '';
+            if (catVal && mongoose_2.Types.ObjectId.isValid(catVal)) {
+                categoryIds.add(catVal);
+            }
+            else if (catVal) {
+                categoryNames.add(catVal.toLowerCase().trim());
+            }
+            const brandVal = row.brandId || row.brand || '';
+            if (brandVal && mongoose_2.Types.ObjectId.isValid(brandVal)) {
+                brandIds.add(brandVal);
+            }
+            else if (brandVal) {
+                brandNames.add(brandVal.toLowerCase().trim());
+            }
+            const vendorVal = row.vendorId || row.vendor || '';
+            if (vendorVal && mongoose_2.Types.ObjectId.isValid(vendorVal)) {
+                vendorIds.add(vendorVal);
+            }
+            else if (vendorVal) {
+                vendorEmails.add(vendorVal.toLowerCase().trim());
+            }
+        }
+        const lookups = await Promise.all([
+            this.productModel.find({ sku: { $in: [...skus] } }, { sku: 1 }).lean(),
+            this.productModel.find({ slug: { $in: [...slugs] } }, { slug: 1 }).lean(),
+            categoryIds.size > 0
+                ? this.categoryModel.find({ _id: { $in: [...categoryIds] } }, { _id: 1 }).lean()
+                : Promise.resolve([]),
+            brandIds.size > 0
+                ? this.brandModel.find({ _id: { $in: [...brandIds] } }, { _id: 1 }).lean()
+                : Promise.resolve([]),
+            vendorIds.size > 0
+                ? this.userModel.find({ _id: { $in: [...vendorIds] } }, { _id: 1 }).lean()
+                : Promise.resolve([]),
+        ]);
+        const [existingSkus, existingSlugs, categoriesById, brandsById, vendorsById] = lookups;
+        const [allCategoriesList, brandsByName, vendorsByEmail] = await Promise.all([
+            this.categoryModel.find({}, { _id: 1, name: 1 }).lean(),
+            brandNames.size > 0
+                ? this.brandModel
+                    .find({ name: { $in: [...brandNames].map((n) => new RegExp(`^${n}$`, 'i')) } }, { _id: 1, name: 1 })
+                    .lean()
+                : Promise.resolve([]),
+            vendorEmails.size > 0
+                ? this.userModel
+                    .find({
+                    role: user_schema_1.UserRole.VENDOR,
+                    email: { $in: [...vendorEmails].map((e) => new RegExp(`^${e}$`, 'i')) },
+                }, { _id: 1, email: 1 })
+                    .lean()
+                : Promise.resolve([]),
+        ]);
+        const takenSkus = new Set(existingSkus.map((p) => p.sku));
+        const takenSlugs = new Set(existingSlugs.map((p) => p.slug));
+        const allCategoryNameMap = new Map();
+        for (const c of allCategoriesList) {
+            allCategoryNameMap.set(c.name.toLowerCase().trim(), c._id.toString());
+        }
+        const categoryNameMap = new Map();
+        for (const inputName of categoryNames) {
+            if (allCategoryNameMap.has(inputName)) {
+                categoryNameMap.set(inputName, allCategoryNameMap.get(inputName));
+                continue;
+            }
+            let bestMatch = null;
+            let bestLen = 0;
+            for (const [catName, catId] of allCategoryNameMap) {
+                if (catName.includes(inputName) || inputName.includes(catName)) {
+                    if (catName.length > bestLen) {
+                        bestLen = catName.length;
+                        bestMatch = catId;
+                    }
+                }
+            }
+            if (bestMatch) {
+                categoryNameMap.set(inputName, bestMatch);
+            }
+        }
+        const validCategoryIds = new Set([
+            ...categoriesById.map((c) => c._id.toString()),
+            ...[...categoryNameMap.values()],
+        ]);
+        const validBrandIds = new Set([
+            ...brandsById.map((b) => b._id.toString()),
+            ...brandsByName.map((b) => b._id.toString()),
+        ]);
+        const validVendorIds = new Set([
+            ...vendorsById.map((v) => v._id.toString()),
+            ...vendorsByEmail.map((v) => v._id.toString()),
+        ]);
+        const brandNameMap = new Map();
+        for (const b of brandsByName) {
+            brandNameMap.set(b.name.toLowerCase(), b._id.toString());
+        }
+        const vendorEmailMap = new Map();
+        for (const v of vendorsByEmail) {
+            vendorEmailMap.set(v.email.toLowerCase(), v._id.toString());
+        }
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            try {
+                const { name, slug, description, price, compareAtPrice, sku, stockQuantity, ingredients, benefits, howToUse, isFeatured, isBestSeller, isNew, tags, imageUrls, discountPercentage, } = row;
+                let resolvedCategoryId = null;
+                const catRaw = row.categoryId || row.category || '';
+                if (catRaw && mongoose_2.Types.ObjectId.isValid(catRaw)) {
+                    resolvedCategoryId = catRaw;
+                }
+                else if (catRaw) {
+                    resolvedCategoryId = categoryNameMap.get(catRaw.toLowerCase().trim()) || null;
+                }
+                let resolvedBrandId = null;
+                const brandRaw = row.brandId || row.brand || '';
+                if (brandRaw && mongoose_2.Types.ObjectId.isValid(brandRaw)) {
+                    resolvedBrandId = brandRaw;
+                }
+                else if (brandRaw) {
+                    resolvedBrandId = brandNameMap.get(brandRaw.toLowerCase().trim()) || null;
+                }
+                let resolvedVendorId = null;
+                const vendorRaw = row.vendorId || row.vendor || '';
+                if (vendorRaw && mongoose_2.Types.ObjectId.isValid(vendorRaw)) {
+                    resolvedVendorId = vendorRaw;
+                }
+                else if (vendorRaw) {
+                    resolvedVendorId = vendorEmailMap.get(vendorRaw.toLowerCase().trim()) || null;
+                }
+                if (!name || !slug || !description || !sku) {
+                    throw new Error('Missing required fields: name, slug, description, sku');
+                }
+                if (!resolvedCategoryId) {
+                    const catDisplay = row.categoryId || row.category || '(none)';
+                    const available = [...allCategoryNameMap.keys()]
+                        .map((n) => allCategoriesList.find((c) => c.name.toLowerCase().trim() === n))
+                        .filter(Boolean)
+                        .map((c) => c.name)
+                        .sort()
+                        .join(', ');
+                    throw new Error(`Category not found: "${catDisplay}". Available categories: ${available || 'none'}`);
+                }
+                if (isNaN(Number(price)) || Number(price) < 0)
+                    throw new Error('Invalid price');
+                if (stockQuantity && isNaN(Number(stockQuantity)))
+                    throw new Error('Invalid stockQuantity');
+                if (!validCategoryIds.has(resolvedCategoryId))
+                    throw new Error(`Category not found: ${resolvedCategoryId}`);
+                if (resolvedBrandId && !validBrandIds.has(resolvedBrandId))
+                    throw new Error(`Brand not found: ${resolvedBrandId}`);
+                if (resolvedVendorId && !validVendorIds.has(resolvedVendorId))
+                    throw new Error(`Vendor not found: ${resolvedVendorId}`);
+                const cleanSku = this.sanitize(sku);
+                const cleanSlug = this.sanitize(slug);
+                if (takenSkus.has(cleanSku))
+                    throw new Error(`SKU already exists: ${sku}`);
+                if (takenSlugs.has(cleanSlug))
+                    throw new Error(`Slug already exists: ${slug}`);
+                const parseBool = (val) => val === true || String(val).toLowerCase() === 'true';
+                const product = new this.productModel({
+                    name: this.sanitize(name),
+                    slug: cleanSlug,
+                    description: this.sanitize(description),
+                    price: Number(price),
+                    compareAtPrice: compareAtPrice ? Number(compareAtPrice) : undefined,
+                    discountPercentage: discountPercentage ? Number(discountPercentage) : 0,
+                    sku: cleanSku,
+                    stockQuantity: Number(stockQuantity || 0),
+                    categoryId: new mongoose_2.Types.ObjectId(resolvedCategoryId),
+                    brandId: resolvedBrandId ? new mongoose_2.Types.ObjectId(resolvedBrandId) : null,
+                    vendorId: resolvedVendorId ? new mongoose_2.Types.ObjectId(resolvedVendorId) : null,
+                    ingredients: this.sanitize(ingredients),
+                    benefits: this.sanitize(benefits),
+                    howToUse: this.sanitize(howToUse),
+                    isFeatured: parseBool(isFeatured),
+                    isBestSeller: parseBool(isBestSeller),
+                    isNewProduct: parseBool(isNew),
+                    tags: Array.isArray(tags)
+                        ? tags
+                        : tags
+                            ? String(tags)
+                                .split(',')
+                                .map((t) => t.trim())
+                                .filter(Boolean)
+                            : [],
+                    isActive: true,
+                });
+                const savedProduct = await product.save();
+                const rawImageUrls = imageUrls || row.images || '';
+                if (rawImageUrls && String(rawImageUrls).trim()) {
+                    const urls = String(rawImageUrls)
+                        .split(',')
+                        .map((u) => u.trim())
+                        .filter(Boolean);
+                    if (urls.length > 0) {
+                        const imageDocuments = urls.map((url, index) => ({
+                            productId: savedProduct._id,
+                            url: this.sanitize(url),
+                            isPrimary: index === 0,
+                            altText: null,
+                        }));
+                        await this.productImageModel.insertMany(imageDocuments);
+                    }
+                }
+                takenSkus.add(cleanSku);
+                takenSlugs.add(cleanSlug);
+                results.push({ row: i + 1, status: 'success', name, sku });
+                success++;
+            }
+            catch (err) {
+                results.push({
+                    row: i + 1,
+                    status: 'failed',
+                    name: row.name,
+                    sku: row.sku,
+                    error: err.message,
+                });
+                failed++;
+            }
+        }
+        return { success, failed, results };
+    }
+    async getOrderDetails(orderId) {
+        if (!mongoose_2.Types.ObjectId.isValid(orderId)) {
+            throw new common_1.BadRequestException('Invalid order ID');
+        }
+        const order = await this.orderModel.findById(orderId).lean();
+        if (!order) {
+            throw new common_1.NotFoundException('Order not found');
+        }
+        const user = await this.userModel.findById(order.userId).lean();
+        const orderItems = await this.orderItemModel.find({ orderId: order._id }).lean();
+        return {
+            ...order,
+            user: user || null,
+            items: orderItems || [],
+        };
+    }
+    async getAllOrders(page = 1, limit = 10, status) {
+        const skip = (page - 1) * limit;
+        const filter = status ? { status } : {};
+        const [orders, total] = await Promise.all([
+            this.orderModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+            this.orderModel.countDocuments(filter),
+        ]);
+        const userIds = [...new Set(orders.map((o) => o?.userId?.toString?.()).filter(Boolean))];
+        const users = await this.userModel.find({ _id: { $in: userIds } }).lean();
+        const userMap = users.reduce((acc, u) => {
+            acc[u._id.toString()] = u;
+            return acc;
+        }, {});
+        const orderIds = orders.map((o) => o._id);
+        const orderItems = await this.orderItemModel.find({ orderId: { $in: orderIds } }).lean();
+        const itemsByOrder = orderItems.reduce((acc, item) => {
+            const key = item.orderId.toString();
+            if (!acc[key])
+                acc[key] = [];
+            acc[key].push(item);
+            return acc;
+        }, {});
+        const ordersWithRelations = orders.map((order) => ({
+            ...order,
+            user: order?.userId ? userMap[order.userId.toString()] || null : null,
+            items: itemsByOrder[order._id.toString()] || [],
+        }));
+        return {
+            data: ordersWithRelations,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+    async updateOrderStatus(orderId, status) {
+        if (!mongoose_2.Types.ObjectId.isValid(orderId)) {
+            throw new common_1.BadRequestException('Invalid order ID');
+        }
+        if (!status) {
+            throw new common_1.BadRequestException('Order status is required');
+        }
+        const order = await this.orderModel.findById(orderId).lean();
+        if (!order) {
+            throw new common_1.NotFoundException('Order not found');
+        }
+        if (order.status === status) {
+            return order;
+        }
+        const updateData = { status };
+        if (status === order_schema_1.OrderStatus.CONFIRMED) {
+            updateData.confirmedAt = new Date();
+        }
+        else if (status === order_schema_1.OrderStatus.SHIPPED) {
+            updateData.shippedAt = new Date();
+        }
+        else if (status === order_schema_1.OrderStatus.DELIVERED) {
+            updateData.deliveredAt = new Date();
+        }
+        else if (status === order_schema_1.OrderStatus.CANCELLED) {
+            updateData.cancelledAt = new Date();
+        }
+        const updatedOrder = await this.orderModel
+            .findByIdAndUpdate(orderId, updateData, { new: true })
+            .lean();
+        if (status === order_schema_1.OrderStatus.CONFIRMED) {
+            await this.sendOrderConfirmationEmail(orderId);
+        }
+        await this.sendOrderStatusChangedEmail(orderId, status);
+        return updatedOrder;
+    }
+    async deleteOrder(orderId) {
+        if (!mongoose_2.Types.ObjectId.isValid(orderId)) {
+            throw new common_1.BadRequestException('Invalid order ID');
+        }
+        const order = await this.orderModel.findById(orderId);
+        if (!order) {
+            throw new common_1.NotFoundException('Order not found');
+        }
+        await this.orderItemModel.deleteMany({ orderId: order._id });
+        await this.orderModel.findByIdAndDelete(orderId);
+        return {
+            message: 'Order deleted successfully',
+            deletedOrderId: orderId,
+        };
+    }
+    async sendOrderConfirmationEmail(orderId) {
+        try {
+            const order = await this.orderModel.findById(orderId).lean();
+            if (!order)
+                return;
+            const user = await this.userModel.findById(order.userId).lean();
+            if (!user?.email)
+                return;
+            const address = await this.addressModel.findById(order.addressId).lean();
+            const items = await this.orderItemModel.find({ orderId: order._id }).lean();
+            const productIds = items.map((item) => item.productId);
+            const products = await this.productModel.find({ _id: { $in: productIds } }).lean();
+            const productMap = products.reduce((acc, product) => {
+                acc[product._id.toString()] = product;
+                return acc;
+            }, {});
+            const emailItems = items.map((item) => {
+                const product = productMap[item.productId.toString()];
+                return {
+                    name: product?.name || 'Product',
+                    quantity: item.quantity,
+                    price: Number(item.price),
+                    total: Number(item.total),
+                };
+            });
+            const adminEmail = process.env.ADMIN_ORDER_EMAIL || process.env.ADMIN_EMAIL;
+            await this.emailNotificationService.sendOrderConfirmedEmail({
+                orderNumber: order.orderNumber,
+                total: Number(order.total),
+                subtotal: Number(order.subtotal),
+                discount: Number(order.discount),
+                deliveryCharge: Number(order.deliveryCharge),
+                paymentMethod: order.paymentMethod,
+                customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Customer',
+                customerEmail: user.email,
+                items: emailItems,
+                address: {
+                    fullName: address?.fullName || 'Customer',
+                    phone: address?.phone || '',
+                    province: address?.province || '',
+                    district: address?.district || '',
+                    municipality: address?.municipality || '',
+                    wardNo: address?.wardNo || 0,
+                    area: address?.area || '',
+                    landmark: address?.landmark || undefined,
+                },
+            }, adminEmail);
+        }
+        catch (error) {
+        }
+    }
+    async sendOrderStatusChangedEmail(orderId, status) {
+        try {
+            const order = await this.orderModel.findById(orderId).lean();
+            if (!order)
+                return;
+            const user = await this.userModel.findById(order.userId).lean();
+            if (!user?.email)
+                return;
+            await this.emailNotificationService.sendOrderStatusChangedEmail({
+                orderNumber: order.orderNumber,
+                status,
+                customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Customer',
+                customerEmail: user.email,
+                trackingNumber: order.trackingNumber,
+                deliveryPartner: order.deliveryPartner,
+                updatedAt: new Date(),
+            });
+        }
+        catch (error) { }
+    }
+    async getAllCustomers(page = 1, limit = 10) {
+        const skip = (page - 1) * limit;
+        const [customers, total] = await Promise.all([
+            this.userModel.find({ role: user_schema_1.UserRole.CUSTOMER }).skip(skip).limit(limit).lean(),
+            this.userModel.countDocuments({ role: user_schema_1.UserRole.CUSTOMER }),
+        ]);
+        const customerIds = customers.map((c) => c._id);
+        const orderCounts = await this.orderModel.aggregate([
+            {
+                $match: { userId: { $in: customerIds } },
+            },
+            {
+                $group: {
+                    _id: '$userId',
+                    orderCount: { $sum: 1 },
+                    totalSpent: { $sum: '$total' },
+                },
+            },
+        ]);
+        const orderCountMap = orderCounts.reduce((acc, item) => {
+            acc[item._id.toString()] = {
+                orderCount: item.orderCount,
+                totalSpent: item.totalSpent,
+            };
+            return acc;
+        }, {});
+        const customersWithStats = customers.map((customer) => ({
+            ...customer,
+            id: customer._id.toString(),
+            orderCount: orderCountMap[customer._id.toString()]?.orderCount || 0,
+            totalSpent: orderCountMap[customer._id.toString()]?.totalSpent || 0,
+        }));
+        return {
+            data: customersWithStats,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+    async getAllReviews(page = 1, limit = 10, approved) {
+        const skip = (page - 1) * limit;
+        const filter = approved !== undefined ? { approved } : {};
+        const [reviews, total] = await Promise.all([
+            this.reviewModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+            this.reviewModel.countDocuments(filter),
+        ]);
+        const userIds = [...new Set(reviews.map((r) => r.userId.toString()))];
+        const productIds = [...new Set(reviews.map((r) => r.productId.toString()))];
+        const [users, products] = await Promise.all([
+            this.userModel.find({ _id: { $in: userIds } }).lean(),
+            this.productModel.find({ _id: { $in: productIds } }).lean(),
+        ]);
+        const userMap = users.reduce((acc, u) => {
+            acc[u._id.toString()] = u;
+            return acc;
+        }, {});
+        const productMap = products.reduce((acc, p) => {
+            acc[p._id.toString()] = p;
+            return acc;
+        }, {});
+        const reviewsWithRelations = reviews.map((review) => ({
+            ...review,
+            user: userMap[review.userId.toString()] || null,
+            product: productMap[review.productId.toString()] || null,
+        }));
+        return {
+            data: reviewsWithRelations,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+    async approveReview(reviewId) {
+        if (!mongoose_2.Types.ObjectId.isValid(reviewId)) {
+            throw new common_1.BadRequestException('Invalid review ID');
+        }
+        const review = await this.reviewModel
+            .findByIdAndUpdate(reviewId, { approved: true }, { new: true })
+            .lean();
+        if (!review) {
+            throw new common_1.NotFoundException('Review not found');
+        }
+        return review;
+    }
+    async deleteReview(reviewId) {
+        if (!mongoose_2.Types.ObjectId.isValid(reviewId)) {
+            throw new common_1.BadRequestException('Invalid review ID');
+        }
+        const review = await this.reviewModel.findByIdAndDelete(reviewId).lean();
+        if (!review) {
+            throw new common_1.NotFoundException('Review not found');
+        }
+        return review;
+    }
+    async updateDeliverySettings(data, user) {
+        const prev = await this.settingModel.findOne({ key: 'deliverySettings' }).lean();
+        const settingsValue = JSON.stringify(data);
+        if (prev) {
+            const lastVersion = await this.settingVersionModel
+                .find({ key: 'deliverySettings' })
+                .sort({ version: -1 })
+                .limit(1)
+                .lean();
+            const nextVersion = lastVersion.length > 0 ? lastVersion[0].version + 1 : 1;
+            await this.settingVersionModel.create({
+                key: 'deliverySettings',
+                value: prev.value,
+                userId: user?.userId,
+                username: user?.username,
+                version: nextVersion,
+            });
+        }
+        const updated = await this.settingModel
+            .findOneAndUpdate({ key: 'deliverySettings' }, {
+            key: 'deliverySettings',
+            value: settingsValue,
+        }, { upsert: true, new: true })
+            .lean();
+        await this.auditLogModel.create({
+            action: 'update',
+            entity: 'deliverySettings',
+            userId: user?.userId,
+            username: user?.username,
+            before: prev ? prev.value : '',
+            after: settingsValue,
+        });
+        return updated;
+    }
+    async getDeliverySettings() {
+        const setting = await this.settingModel.findOne({ key: 'deliverySettings' }).lean();
+        if (!setting) {
+            return {
+                freeDeliveryThreshold: 2999,
+                valleyDeliveryCharge: 99,
+                outsideValleyDeliveryCharge: 149,
+            };
+        }
+        try {
+            return JSON.parse(setting.value);
+        }
+        catch {
+            return {
+                freeDeliveryThreshold: 2999,
+                valleyDeliveryCharge: 99,
+                outsideValleyDeliveryCharge: 149,
+            };
+        }
+    }
+    async updateAnnouncementBar(data, user) {
+        try {
+            const prev = await this.settingModel.findOne({ key: 'announcementBar' }).lean();
+            const enabled = typeof data.enabled === 'boolean' ? data.enabled : true;
+            const message = data.message ?? '';
+            const updateValue = JSON.stringify({
+                enabled,
+                message,
+                backgroundColor: data.backgroundColor || '#FFD700',
+                textColor: data.textColor || '#000000',
+            });
+            if (prev) {
+                const lastVersion = await this.settingVersionModel
+                    .find({ key: 'announcementBar' })
+                    .sort({ version: -1 })
+                    .limit(1)
+                    .lean();
+                const nextVersion = lastVersion && lastVersion.length > 0 ? lastVersion[0].version + 1 : 1;
+                await this.settingVersionModel.create({
+                    key: 'announcementBar',
+                    value: prev.value,
+                    userId: user?.userId,
+                    username: user?.username,
+                    version: nextVersion,
+                });
+            }
+            const updated = await this.settingModel
+                .findOneAndUpdate({ key: 'announcementBar' }, {
+                key: 'announcementBar',
+                value: updateValue,
+            }, { upsert: true, new: true })
+                .lean();
+            try {
+                await this.auditLogModel.create({
+                    action: 'update',
+                    entity: 'announcementBar',
+                    userId: user?.userId,
+                    username: user?.username,
+                    before: prev ? prev.value : '',
+                    after: updateValue,
+                });
+            }
+            catch (auditError) {
+                console.error('Failed to create audit log:', auditError);
+            }
+            return updated;
+        }
+        catch (error) {
+            console.error('Error updating announcement bar:', error);
+            throw new common_1.BadRequestException(`Failed to update announcement bar: ${error.message}`);
+        }
+    }
+    async getAnnouncementBar() {
+        const setting = await this.settingModel.findOne({ key: 'announcementBar' }).lean();
+        if (!setting) {
+            return {
+                enabled: false,
+                isActive: false,
+                message: '',
+                text: '',
+                icon: '🚚',
+                backgroundColor: '#000000',
+                textColor: '#ffffff',
+            };
+        }
+        let parsed;
+        try {
+            parsed = JSON.parse(setting.value);
+        }
+        catch {
+            parsed = {
+                enabled: false,
+                message: '',
+                backgroundColor: '#000000',
+                textColor: '#ffffff',
+            };
+        }
+        return {
+            ...parsed,
+            isActive: parsed.enabled,
+            text: parsed.message,
+            icon: parsed.icon || '🚚',
+        };
+    }
+    async updateDiscountSettings(data, user) {
+        const prev = await this.settingModel.findOne({ key: 'discountSettings' }).lean();
+        const updateValue = JSON.stringify({
+            enabled: data.enabled,
+            percentage: data.percentage || 0,
+            minOrderAmount: data.minOrderAmount || 0,
+        });
+        if (prev) {
+            const lastVersion = await this.settingVersionModel
+                .find({ key: 'discountSettings' })
+                .sort({ version: -1 })
+                .limit(1)
+                .lean();
+            const nextVersion = lastVersion.length > 0 ? lastVersion[0].version + 1 : 1;
+            await this.settingVersionModel.create({
+                key: 'discountSettings',
+                value: prev.value,
+                userId: user?.userId,
+                username: user?.username,
+                version: nextVersion,
+            });
+        }
+        const updated = await this.settingModel
+            .findOneAndUpdate({ key: 'discountSettings' }, {
+            key: 'discountSettings',
+            value: updateValue,
+        }, { upsert: true, new: true })
+            .lean();
+        await this.auditLogModel.create({
+            action: 'update',
+            entity: 'discountSettings',
+            userId: user?.userId,
+            username: user?.username,
+            before: prev ? prev.value : '',
+            after: updateValue,
+        });
+        return updated;
+    }
+    async getDiscountSettings() {
+        const setting = await this.settingModel.findOne({ key: 'discountSettings' }).lean();
+        if (!setting) {
+            return {
+                enabled: false,
+                percentage: 0,
+                minOrderAmount: 0,
+            };
+        }
+        try {
+            return JSON.parse(setting.value);
+        }
+        catch (e) {
+            return {
+                enabled: false,
+                percentage: 0,
+                minOrderAmount: 0,
+            };
+        }
+    }
+    async getAllCategories() {
+        try {
+            const categories = await this.categoryModel
+                .find({ isActive: true })
+                .sort({ displayOrder: 1 })
+                .lean();
+            if (!categories || categories.length === 0) {
+                throw new common_1.NotFoundException('No categories found. Please seed categories first using POST /categories/seed');
+            }
+            return {
+                data: categories,
+                count: categories.length,
+                message: 'Categories retrieved successfully',
+            };
+        }
+        catch (error) {
+            if (error instanceof common_1.NotFoundException) {
+                throw error;
+            }
+            throw new common_1.BadRequestException('Failed to retrieve categories');
+        }
+    }
+    async seedInitialUsers() {
+        const users = [
+            {
+                email: 'superadmin@glovia.com.np',
+                password: 'SuperAdmin123!',
+                firstName: 'Super',
+                lastName: 'Admin',
+                phone: '+977-9800000001',
+                role: user_schema_1.UserRole.SUPER_ADMIN,
+                isEmailVerified: true,
+                trustScore: 100,
+            },
+            {
+                email: 'admin@glovia.com.np',
+                password: 'Admin123!',
+                firstName: 'Admin',
+                lastName: 'User',
+                phone: '+977-9800000002',
+                role: user_schema_1.UserRole.ADMIN,
+                isEmailVerified: true,
+                trustScore: 100,
+            },
+            {
+                email: 'vendor@glovia.com.np',
+                password: 'Vendor123!',
+                firstName: 'Vendor',
+                lastName: 'Account',
+                phone: '+977-9800000003',
+                role: user_schema_1.UserRole.VENDOR,
+                isEmailVerified: true,
+                trustScore: 75,
+            },
+            {
+                email: 'user@glovia.com.np',
+                password: 'User123!',
+                firstName: 'Regular',
+                lastName: 'User',
+                phone: '+977-9800000004',
+                role: user_schema_1.UserRole.CUSTOMER,
+                isEmailVerified: true,
+                trustScore: 50,
+            },
+        ];
+        const createdUsers = [];
+        for (const userData of users) {
+            const existingUser = await this.userModel.findOne({ email: userData.email });
+            if (existingUser) {
+                if (existingUser.role !== userData.role && userData.role === user_schema_1.UserRole.SUPER_ADMIN) {
+                    await this.userModel.findByIdAndUpdate(existingUser._id, { role: userData.role });
+                    createdUsers.push({
+                        email: userData.email,
+                        status: 'role_updated_to_SUPER_ADMIN',
+                    });
+                }
+                else {
+                    createdUsers.push({
+                        email: userData.email,
+                        status: 'already_exists',
+                    });
+                }
+                continue;
+            }
+            const hashedPassword = await bcrypt.hash(userData.password, 10);
+            const user = await this.userModel.create({
+                ...userData,
+                password: hashedPassword,
+            });
+            createdUsers.push({
+                email: userData.email,
+                password: userData.password,
+                role: userData.role,
+                status: 'created',
+            });
+        }
+        return createdUsers;
+    }
+    async fixSuperAdminRole() {
+        const superadmin = await this.userModel.findOne({ email: 'superadmin@glovia.com.np' });
+        if (!superadmin) {
+            throw new common_1.NotFoundException('SuperAdmin user not found');
+        }
+        if (superadmin.role === user_schema_1.UserRole.SUPER_ADMIN) {
+            return { email: superadmin.email, role: superadmin.role, status: 'already_correct' };
+        }
+        await this.userModel.findByIdAndUpdate(superadmin._id, { role: user_schema_1.UserRole.SUPER_ADMIN });
+        return {
+            email: superadmin.email,
+            oldRole: superadmin.role,
+            newRole: user_schema_1.UserRole.SUPER_ADMIN,
+            status: 'updated',
+        };
+    }
+    async getAllBanners() {
+        return this.bannerModel.find().sort({ displayOrder: 1 }).lean();
+    }
+    async getBanner(id) {
+        const banner = await this.bannerModel.findById(id).lean();
+        if (!banner) {
+            throw new common_1.NotFoundException('Banner not found');
+        }
+        return banner;
+    }
+    async createBanner(createBannerDto) {
+        const image = createBannerDto?.image || createBannerDto?.imageUrl;
+        if (!image) {
+            throw new common_1.BadRequestException('Banner image is required');
+        }
+        const payload = {
+            title: createBannerDto?.title,
+            subtitle: createBannerDto?.subtitle,
+            image,
+            mobileImage: createBannerDto?.mobileImage,
+            link: createBannerDto?.link,
+            displayOrder: Number.isFinite(Number(createBannerDto?.displayOrder))
+                ? Number(createBannerDto.displayOrder)
+                : Number.isFinite(Number(createBannerDto?.priority))
+                    ? Number(createBannerDto.priority)
+                    : 0,
+            isActive: typeof createBannerDto?.isActive === 'boolean' ? createBannerDto.isActive : true,
+        };
+        const banner = new this.bannerModel(payload);
+        try {
+            return await banner.save();
+        }
+        catch (error) {
+            throw new common_1.BadRequestException(error?.message || 'Failed to create banner');
+        }
+    }
+    async updateBanner(id, updateBannerDto) {
+        const banner = await this.bannerModel.findByIdAndUpdate(id, updateBannerDto, { new: true });
+        if (!banner) {
+            throw new common_1.NotFoundException('Banner not found');
+        }
+        return banner;
+    }
+    async deleteBanner(id) {
+        const banner = await this.bannerModel.findByIdAndDelete(id);
+        if (!banner) {
+            throw new common_1.NotFoundException('Banner not found');
+        }
+        return { message: 'Banner deleted successfully' };
+    }
+    async getFeaturedVendors() {
+        const vendors = await this.userModel
+            .find({ role: user_schema_1.UserRole.VENDOR, isFeatured: true })
+            .select('_id email firstName lastName profileImage vendorLogo vendorDescription isFeatured')
+            .lean();
+        return {
+            status: 'success',
+            data: vendors,
+            count: vendors.length,
+        };
+    }
+    async getAllVendors() {
+        const vendors = await this.userModel
+            .find({ role: user_schema_1.UserRole.VENDOR })
+            .select('_id email firstName lastName profileImage vendorLogo vendorDescription isFeatured createdAt')
+            .sort({ createdAt: -1 })
+            .lean();
+        return {
+            status: 'success',
+            data: vendors,
+            count: vendors.length,
+        };
+    }
+    async toggleVendorFeatured(vendorId) {
+        if (!mongoose_2.Types.ObjectId.isValid(vendorId)) {
+            throw new common_1.BadRequestException('Invalid vendor ID');
+        }
+        const vendor = await this.userModel.findById(vendorId);
+        if (!vendor) {
+            throw new common_1.NotFoundException('Vendor not found');
+        }
+        if (vendor.role !== user_schema_1.UserRole.VENDOR) {
+            throw new common_1.BadRequestException('User is not a vendor');
+        }
+        vendor.isFeatured = !vendor.isFeatured;
+        await vendor.save();
+        return {
+            status: 'success',
+            message: `Vendor ${vendor.isFeatured ? 'marked as featured' : 'removed from featured'}`,
+            data: {
+                _id: vendor._id,
+                email: vendor.email,
+                firstName: vendor.firstName,
+                lastName: vendor.lastName,
+                isFeatured: vendor.isFeatured,
+            },
+        };
+    }
+};
+exports.AdminService = AdminService;
+exports.AdminService = AdminService = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, mongoose_1.InjectModel)(user_schema_1.User.name)),
+    __param(1, (0, mongoose_1.InjectModel)(product_schema_1.Product.name)),
+    __param(2, (0, mongoose_1.InjectModel)(order_schema_1.Order.name)),
+    __param(3, (0, mongoose_1.InjectModel)(order_item_schema_1.OrderItem.name)),
+    __param(4, (0, mongoose_1.InjectModel)(review_schema_1.Review.name)),
+    __param(5, (0, mongoose_1.InjectModel)(category_schema_1.Category.name)),
+    __param(6, (0, mongoose_1.InjectModel)(brand_schema_1.Brand.name)),
+    __param(7, (0, mongoose_1.InjectModel)(product_image_schema_1.ProductImage.name)),
+    __param(8, (0, mongoose_1.InjectModel)(setting_schema_1.Setting.name)),
+    __param(9, (0, mongoose_1.InjectModel)(address_schema_1.Address.name)),
+    __param(10, (0, mongoose_1.InjectModel)(audit_schema_1.AuditLog.name)),
+    __param(11, (0, mongoose_1.InjectModel)(setting_version_schema_1.SettingVersion.name)),
+    __param(12, (0, mongoose_1.InjectModel)(banner_schema_1.Banner.name)),
+    __metadata("design:paramtypes", [mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        mongoose_2.Model,
+        email_notification_service_1.EmailNotificationService])
+], AdminService);
+//# sourceMappingURL=admin.service.js.map

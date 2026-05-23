@@ -1,0 +1,602 @@
+import { AdminService } from './admin.service';
+import { UserRole } from '../../database/schemas/user.schema';
+import { OrderStatus } from '../../database/schemas/order.schema';
+import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
+import { CreateUserDto, UpdateUserRoleDto, FreezeVendorDto, UnfreezeVendorDto } from './dto/user.dto';
+import { UpdateOrderDto } from './dto/order.dto';
+import { UpdateDeliverySettingsDto, UpdateDiscountSettingsDto } from './dto/settings.dto';
+import { UpdateAnnouncementDto } from './dto/announcement.dto';
+import { CreateBannerDto } from '../banners/dto/create-banner.dto';
+import { UpdateBannerDto } from '../banners/dto/update-banner.dto';
+import { UploadService } from '../upload/upload.service';
+export declare class AdminController {
+    private adminService;
+    private uploadService;
+    constructor(adminService: AdminService, uploadService: UploadService);
+    private parseProductFormData;
+    getDashboard(): Promise<{
+        totalOrders: number;
+        totalRevenue: any;
+        totalCustomers: number;
+        totalUsers: number;
+        totalAdmins: number;
+        totalVendors: number;
+        totalProducts: number;
+        pendingOrders: number;
+        recentOrders: {
+            user: any;
+            orderNumber: string;
+            userId: import("mongoose").Types.ObjectId;
+            addressId: import("mongoose").Types.ObjectId;
+            subtotal: number;
+            discount: number;
+            deliveryCharge: number;
+            total: number;
+            status: OrderStatus;
+            paymentStatus: import("../../database/schemas/order.schema").PaymentStatus;
+            paymentMethod: import("../../database/schemas/order.schema").PaymentMethod;
+            customerNote?: string;
+            adminNote?: string;
+            trackingNumber?: string;
+            deliveryPartner?: string;
+            confirmedAt?: Date;
+            shippedAt?: Date;
+            deliveredAt?: Date;
+            cancelledAt?: Date;
+            _id: import("mongoose").Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        topProducts: {
+            product: any;
+            totalSold: any;
+        }[];
+        revenueByMonth: any[];
+    }>;
+    getAllUsers(page?: number, limit?: number, role?: UserRole): Promise<{
+        data: {
+            id: string;
+            email: string;
+            phone?: string;
+            password: string;
+            firstName: string;
+            lastName: string;
+            role: UserRole;
+            permissions: {
+                canEditProducts?: boolean;
+                canViewOrders?: boolean;
+                canManageUsers?: boolean;
+                canManageBanners?: boolean;
+                canViewAnalytics?: boolean;
+                canManagePromos?: boolean;
+                canViewAuditLogs?: boolean;
+                [key: string]: boolean | undefined;
+            };
+            isEmailVerified: boolean;
+            isPhoneVerified: boolean;
+            loyaltyPoints: number;
+            skinType?: import("../../database/schemas/user.schema").SkinType;
+            profileImage?: string;
+            refreshToken?: string;
+            trustScore: number;
+            deviceFingerprint?: string;
+            ipAddress?: string;
+            failedAttempts: number;
+            isBlocked: boolean;
+            lastLoginAt?: Date;
+            isFeatured: boolean;
+            vendorDescription?: string;
+            vendorLogo?: string;
+            vendorType?: import("../../database/schemas/user.schema").VendorType;
+            isFrozen: boolean;
+            frozenAt?: Date;
+            frozenReason?: string;
+            _id: import("mongoose").Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    createUser(dto: CreateUserDto): Promise<import("../../database/schemas/user.schema").User & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    updateUserRole(id: string, dto: UpdateUserRoleDto, actorRole: UserRole): Promise<import("../../database/schemas/user.schema").User & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    deleteUser(id: string): Promise<import("../../database/schemas/user.schema").User & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    freezeVendor(vendorId: string, dto: FreezeVendorDto): Promise<import("../../database/schemas/user.schema").User & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    unfreezeVendor(vendorId: string, dto: UnfreezeVendorDto): Promise<import("../../database/schemas/user.schema").User & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    createProduct(dto: CreateProductDto): Promise<import("mongoose").Document<unknown, {}, import("../../database/schemas").Product, {}, import("mongoose").DefaultSchemaOptions> & import("../../database/schemas").Product & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    } & {
+        id: string;
+    }>;
+    bulkCreateProducts(body: {
+        products: CreateProductDto[];
+    }): Promise<{
+        success: number;
+        failed: number;
+        results: any[];
+    }>;
+    createProductWithImages(files: Express.Multer.File[], body: Record<string, any>): Promise<import("mongoose").Document<unknown, {}, import("../../database/schemas").Product, {}, import("mongoose").DefaultSchemaOptions> & import("../../database/schemas").Product & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    } & {
+        id: string;
+    }>;
+    updateProduct(id: string, dto: UpdateProductDto): Promise<import("../../database/schemas").Product & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    updateProductWithImages(id: string, files: Express.Multer.File[], body: Record<string, any>): Promise<import("../../database/schemas").Product & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    deleteProduct(id: string): Promise<import("../../database/schemas").Product & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    getAllProducts(page?: string, limit?: string, categoryId?: string, brandId?: string): Promise<{
+        data: {
+            images: any[];
+            category: any;
+            brand: any;
+            name: string;
+            slug: string;
+            description: string;
+            ingredients?: string;
+            benefits?: string;
+            howToUse?: string;
+            price: number;
+            compareAtPrice?: number;
+            discountPercentage?: number;
+            costPrice?: number;
+            sku: string;
+            barcode?: string;
+            stockQuantity: number;
+            quantityMl?: number;
+            lowStockThreshold: number;
+            weight?: number;
+            categoryId: import("mongoose").Types.ObjectId;
+            brandId?: import("mongoose").Types.ObjectId;
+            vendorId: import("mongoose").Types.ObjectId;
+            vendorName: string;
+            vendorEmail: string;
+            vendorPhone?: string;
+            uploadedBy?: string;
+            uploadedById?: import("mongoose").Types.ObjectId;
+            suitableFor: import("../../database/schemas/user.schema").SkinType[];
+            isActive: boolean;
+            isFeatured: boolean;
+            isBestSeller: boolean;
+            isNewProduct: boolean;
+            metaTitle?: string;
+            metaDescription?: string;
+            tags: string[];
+            _id: import("mongoose").Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    getProduct(id: string): Promise<{
+        images: (import("../../database/schemas").ProductImage & Required<{
+            _id: import("mongoose").Types.ObjectId;
+        }> & {
+            __v: number;
+        })[];
+        category: import("../../database/schemas").Category & Required<{
+            _id: import("mongoose").Types.ObjectId;
+        }> & {
+            __v: number;
+        };
+        brand: import("../../database/schemas").Brand & Required<{
+            _id: import("mongoose").Types.ObjectId;
+        }> & {
+            __v: number;
+        };
+        name: string;
+        slug: string;
+        description: string;
+        ingredients?: string;
+        benefits?: string;
+        howToUse?: string;
+        price: number;
+        compareAtPrice?: number;
+        discountPercentage?: number;
+        costPrice?: number;
+        sku: string;
+        barcode?: string;
+        stockQuantity: number;
+        quantityMl?: number;
+        lowStockThreshold: number;
+        weight?: number;
+        categoryId: import("mongoose").Types.ObjectId;
+        brandId?: import("mongoose").Types.ObjectId;
+        vendorId: import("mongoose").Types.ObjectId;
+        vendorName: string;
+        vendorEmail: string;
+        vendorPhone?: string;
+        uploadedBy?: string;
+        uploadedById?: import("mongoose").Types.ObjectId;
+        suitableFor: import("../../database/schemas/user.schema").SkinType[];
+        isActive: boolean;
+        isFeatured: boolean;
+        isBestSeller: boolean;
+        isNewProduct: boolean;
+        metaTitle?: string;
+        metaDescription?: string;
+        tags: string[];
+        _id: import("mongoose").Types.ObjectId;
+        $locals: Record<string, unknown>;
+        $op: "save" | "validate" | "remove" | null;
+        $where: Record<string, unknown>;
+        baseModelName?: string;
+        collection: import("mongoose").Collection;
+        db: import("mongoose").Connection;
+        errors?: import("mongoose").Error.ValidationError;
+        isNew: boolean;
+        schema: import("mongoose").Schema;
+        __v: number;
+    }>;
+    getAllOrders(status?: string, page?: string, limit?: string): Promise<{
+        data: {
+            user: any;
+            items: any[];
+            orderNumber: string;
+            userId: import("mongoose").Types.ObjectId;
+            addressId: import("mongoose").Types.ObjectId;
+            subtotal: number;
+            discount: number;
+            deliveryCharge: number;
+            total: number;
+            status: OrderStatus;
+            paymentStatus: import("../../database/schemas/order.schema").PaymentStatus;
+            paymentMethod: import("../../database/schemas/order.schema").PaymentMethod;
+            customerNote?: string;
+            adminNote?: string;
+            trackingNumber?: string;
+            deliveryPartner?: string;
+            confirmedAt?: Date;
+            shippedAt?: Date;
+            deliveredAt?: Date;
+            cancelledAt?: Date;
+            _id: import("mongoose").Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    getOrder(id: string): Promise<{
+        user: import("../../database/schemas/user.schema").User & Required<{
+            _id: import("mongoose").Types.ObjectId;
+        }> & {
+            __v: number;
+        };
+        items: (import("../../database/schemas").OrderItem & Required<{
+            _id: import("mongoose").Types.ObjectId;
+        }> & {
+            __v: number;
+        })[];
+        orderNumber: string;
+        userId: import("mongoose").Types.ObjectId;
+        addressId: import("mongoose").Types.ObjectId;
+        subtotal: number;
+        discount: number;
+        deliveryCharge: number;
+        total: number;
+        status: OrderStatus;
+        paymentStatus: import("../../database/schemas/order.schema").PaymentStatus;
+        paymentMethod: import("../../database/schemas/order.schema").PaymentMethod;
+        customerNote?: string;
+        adminNote?: string;
+        trackingNumber?: string;
+        deliveryPartner?: string;
+        confirmedAt?: Date;
+        shippedAt?: Date;
+        deliveredAt?: Date;
+        cancelledAt?: Date;
+        _id: import("mongoose").Types.ObjectId;
+        $locals: Record<string, unknown>;
+        $op: "save" | "validate" | "remove" | null;
+        $where: Record<string, unknown>;
+        baseModelName?: string;
+        collection: import("mongoose").Collection;
+        db: import("mongoose").Connection;
+        errors?: import("mongoose").Error.ValidationError;
+        isNew: boolean;
+        schema: import("mongoose").Schema;
+        __v: number;
+    }>;
+    updateOrder(id: string, dto: UpdateOrderDto): Promise<import("../../database/schemas/order.schema").Order & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    deleteOrder(id: string): Promise<{
+        message: string;
+        deletedOrderId: string;
+    }>;
+    getAllCustomers(page?: string, limit?: string): Promise<{
+        data: {
+            id: string;
+            orderCount: any;
+            totalSpent: any;
+            email: string;
+            phone?: string;
+            password: string;
+            firstName: string;
+            lastName: string;
+            role: UserRole;
+            permissions: {
+                canEditProducts?: boolean;
+                canViewOrders?: boolean;
+                canManageUsers?: boolean;
+                canManageBanners?: boolean;
+                canViewAnalytics?: boolean;
+                canManagePromos?: boolean;
+                canViewAuditLogs?: boolean;
+                [key: string]: boolean | undefined;
+            };
+            isEmailVerified: boolean;
+            isPhoneVerified: boolean;
+            loyaltyPoints: number;
+            skinType?: import("../../database/schemas/user.schema").SkinType;
+            profileImage?: string;
+            refreshToken?: string;
+            trustScore: number;
+            deviceFingerprint?: string;
+            ipAddress?: string;
+            failedAttempts: number;
+            isBlocked: boolean;
+            lastLoginAt?: Date;
+            isFeatured: boolean;
+            vendorDescription?: string;
+            vendorLogo?: string;
+            vendorType?: import("../../database/schemas/user.schema").VendorType;
+            isFrozen: boolean;
+            frozenAt?: Date;
+            frozenReason?: string;
+            _id: import("mongoose").Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    getAllReviews(isApproved?: string, page?: string, limit?: string): Promise<{
+        data: {
+            user: any;
+            product: any;
+            productId: import("mongoose").Types.ObjectId;
+            userId: import("mongoose").Types.ObjectId;
+            rating: number;
+            title?: string;
+            comment: string;
+            isVerified: boolean;
+            isApproved: boolean;
+            _id: import("mongoose").Types.ObjectId;
+            $locals: Record<string, unknown>;
+            $op: "save" | "validate" | "remove" | null;
+            $where: Record<string, unknown>;
+            baseModelName?: string;
+            collection: import("mongoose").Collection;
+            db: import("mongoose").Connection;
+            errors?: import("mongoose").Error.ValidationError;
+            isNew: boolean;
+            schema: import("mongoose").Schema;
+            __v: number;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+        };
+    }>;
+    approveReview(id: string): Promise<import("../../database/schemas").Review & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    deleteReview(id: string): Promise<import("../../database/schemas").Review & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    getDeliverySettings(): Promise<any>;
+    updateDeliverySettings(dto: UpdateDeliverySettingsDto, user: any): Promise<{
+        message: string;
+        freeDeliveryThreshold: number;
+        valleyDeliveryCharge: number;
+        outsideValleyDeliveryCharge: number;
+    }>;
+    getAnnouncement(): Promise<any>;
+    updateAnnouncement(dto: UpdateAnnouncementDto, user: any): Promise<import("../../database/schemas").Setting & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    getDiscountSettings(): Promise<any>;
+    updateDiscountSettings(dto: UpdateDiscountSettingsDto, user: any): Promise<import("../../database/schemas").Setting & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    getCategories(): Promise<{
+        data: (import("../../database/schemas").Category & Required<{
+            _id: import("mongoose").Types.ObjectId;
+        }> & {
+            __v: number;
+        })[];
+        count: number;
+        message: string;
+    }>;
+    getBanners(): Promise<(import("../../database/schemas").Banner & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    })[]>;
+    getBanner(id: string): Promise<import("../../database/schemas").Banner & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    createBanner(createBannerDto: CreateBannerDto): Promise<import("mongoose").Document<unknown, {}, import("../../database/schemas").Banner, {}, import("mongoose").DefaultSchemaOptions> & import("../../database/schemas").Banner & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    } & {
+        id: string;
+    }>;
+    updateBanner(id: string, updateBannerDto: UpdateBannerDto): Promise<import("mongoose").Document<unknown, {}, import("../../database/schemas").Banner, {}, import("mongoose").DefaultSchemaOptions> & import("../../database/schemas").Banner & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    } & {
+        id: string;
+    }>;
+    deleteBanner(id: string): Promise<{
+        message: string;
+    }>;
+    initializeUsers(): Promise<{
+        status: string;
+        message: string;
+        data: any[];
+    } | {
+        status: string;
+        message: any;
+        data?: undefined;
+    }>;
+    fixSuperAdmin(): Promise<{
+        status: string;
+        message: string;
+        data: {
+            email: string;
+            role: UserRole.SUPER_ADMIN;
+            status: string;
+            oldRole?: undefined;
+            newRole?: undefined;
+        } | {
+            email: string;
+            oldRole: UserRole.CUSTOMER | UserRole.ADMIN | UserRole.VENDOR | UserRole.EDITOR | UserRole.MARKETING | UserRole.AUDITOR;
+            newRole: UserRole;
+            status: string;
+            role?: undefined;
+        };
+    } | {
+        status: string;
+        message: any;
+        data?: undefined;
+    }>;
+    getFeaturedVendors(): Promise<{
+        status: string;
+        data: (import("../../database/schemas/user.schema").User & Required<{
+            _id: import("mongoose").Types.ObjectId;
+        }> & {
+            __v: number;
+        })[];
+        count: number;
+    }>;
+    getAllVendors(): Promise<{
+        status: string;
+        data: (import("../../database/schemas/user.schema").User & Required<{
+            _id: import("mongoose").Types.ObjectId;
+        }> & {
+            __v: number;
+        })[];
+        count: number;
+    }>;
+    toggleVendorFeatured(vendorId: string): Promise<{
+        status: string;
+        message: string;
+        data: {
+            _id: import("mongoose").Types.ObjectId;
+            email: string;
+            firstName: string;
+            lastName: string;
+            isFeatured: boolean;
+        };
+    }>;
+}
