@@ -40,10 +40,14 @@ export class FindProductsQueryDto {
   featured?: boolean;
 
   @IsOptional()
-  @IsString()
-  minPrice?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  minPrice?: number;
 
   @IsOptional()
-  @IsString()
-  maxPrice?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  maxPrice?: number;
 }
