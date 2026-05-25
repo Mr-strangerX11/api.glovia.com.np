@@ -193,6 +193,34 @@ let AdminService = class AdminService {
         }
         return this.userModel.findByIdAndUpdate(userId, { role }, { new: true }).lean();
     }
+    async updateUserPermissions(userId, permissions) {
+        if (!mongoose_2.Types.ObjectId.isValid(userId)) {
+            throw new common_1.BadRequestException('Invalid user ID');
+        }
+        const user = await this.userModel
+            .findByIdAndUpdate(userId, { permissions }, { new: true })
+            .lean();
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        return user;
+    }
+    async updateUserFields(userId, data) {
+        if (!mongoose_2.Types.ObjectId.isValid(userId)) {
+            throw new common_1.BadRequestException('Invalid user ID');
+        }
+        const allowed = ['vendorType', 'firstName', 'lastName', 'phone', 'profileImage'];
+        const update = {};
+        for (const key of allowed) {
+            if (data[key] !== undefined)
+                update[key] = data[key];
+        }
+        const user = await this.userModel
+            .findByIdAndUpdate(userId, update, { new: true })
+            .lean();
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        return user;
+    }
     async deleteUser(userId) {
         if (!mongoose_2.Types.ObjectId.isValid(userId)) {
             throw new common_1.BadRequestException('Invalid user ID');

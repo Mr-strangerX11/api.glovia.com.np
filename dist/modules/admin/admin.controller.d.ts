@@ -128,6 +128,16 @@ export declare class AdminController {
     }> & {
         __v: number;
     }>;
+    updateUserPermissions(id: string, permissions: Record<string, boolean>): Promise<import("../../database/schemas/user.schema").User & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    updateUser(id: string, data: Record<string, any>): Promise<import("../../database/schemas/user.schema").User & Required<{
+        _id: import("mongoose").Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
     deleteUser(id: string): Promise<import("../../database/schemas/user.schema").User & Required<{
         _id: import("mongoose").Types.ObjectId;
     }> & {

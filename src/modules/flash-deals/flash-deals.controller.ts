@@ -22,6 +22,18 @@ import { UserRole } from '../../database/schemas/user.schema';
 export class FlashDealsController {
   constructor(private readonly flashDealsService: FlashDealsService) {}
 
+  // Admin: Get statistics — must be before @Get(':id') to avoid param capture
+  @Get('admin/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  async getStatistics() {
+    const stats = await this.flashDealsService.getStatistics();
+    return {
+      success: true,
+      data: stats,
+    };
+  }
+
   // Public: Get active flash deals
   @Get('active')
   async getActiveFlashDeals() {
@@ -140,15 +152,4 @@ export class FlashDealsController {
     };
   }
 
-  // Admin: Get statistics
-  @Get('admin/stats')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  async getStatistics() {
-    const stats = await this.flashDealsService.getStatistics();
-    return {
-      success: true,
-      data: stats,
-    };
-  }
 }

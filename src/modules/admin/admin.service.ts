@@ -227,6 +227,34 @@ export class AdminService {
     return this.userModel.findByIdAndUpdate(userId, { role }, { new: true }).lean();
   }
 
+  async updateUserPermissions(userId: string, permissions: Record<string, boolean>) {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+    const user = await this.userModel
+      .findByIdAndUpdate(userId, { permissions }, { new: true })
+      .lean();
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async updateUserFields(userId: string, data: Record<string, any>) {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+    // Only allow safe fields to be updated via this generic endpoint
+    const allowed = ['vendorType', 'firstName', 'lastName', 'phone', 'profileImage'];
+    const update: Record<string, any> = {};
+    for (const key of allowed) {
+      if (data[key] !== undefined) update[key] = data[key];
+    }
+    const user = await this.userModel
+      .findByIdAndUpdate(userId, update, { new: true })
+      .lean();
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
   async deleteUser(userId: string) {
     if (!Types.ObjectId.isValid(userId)) {
       throw new BadRequestException('Invalid user ID');

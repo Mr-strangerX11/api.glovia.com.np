@@ -3,6 +3,17 @@ import { CreateFlashDealDto, UpdateFlashDealDto } from './dto/flash-deal.dto';
 export declare class FlashDealsController {
     private readonly flashDealsService;
     constructor(flashDealsService: FlashDealsService);
+    getStatistics(): Promise<{
+        success: boolean;
+        data: {
+            active: number;
+            upcoming: number;
+            expired: number;
+            total: number;
+            totalViews: any;
+            totalClicks: any;
+        };
+    }>;
     getActiveFlashDeals(): Promise<{
         success: boolean;
         data: (import("../../database/schemas").FlashDeal & Required<{
@@ -82,16 +93,5 @@ export declare class FlashDealsController {
     }>;
     recordClick(id: string): Promise<{
         success: boolean;
-    }>;
-    getStatistics(): Promise<{
-        success: boolean;
-        data: {
-            active: number;
-            upcoming: number;
-            expired: number;
-            total: number;
-            totalViews: any;
-            totalClicks: any;
-        };
     }>;
 }

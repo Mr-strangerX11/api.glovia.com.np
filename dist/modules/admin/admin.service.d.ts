@@ -146,6 +146,16 @@ export declare class AdminService {
     }> & {
         __v: number;
     }>;
+    updateUserPermissions(userId: string, permissions: Record<string, boolean>): Promise<User & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
+    updateUserFields(userId: string, data: Record<string, any>): Promise<User & Required<{
+        _id: Types.ObjectId;
+    }> & {
+        __v: number;
+    }>;
     deleteUser(userId: string): Promise<User & Required<{
         _id: Types.ObjectId;
     }> & {

@@ -121,6 +121,24 @@ export class AdminController {
     return this.adminService.updateUserRole(id, dto.role, actorRole);
   }
 
+  @Put('users/:id/permissions')
+  @ApiOperation({ summary: 'Update user permissions' })
+  updateUserPermissions(
+    @Param('id') id: string,
+    @Body('permissions') permissions: Record<string, boolean>
+  ) {
+    return this.adminService.updateUserPermissions(id, permissions);
+  }
+
+  @Put('users/:id')
+  @ApiOperation({ summary: 'Update user fields (vendorType, etc.)' })
+  updateUser(
+    @Param('id') id: string,
+    @Body() data: Record<string, any>
+  ) {
+    return this.adminService.updateUserFields(id, data);
+  }
+
   @Delete('users/:id')
   @ApiOperation({ summary: 'Delete user' })
   deleteUser(@Param('id') id: string) {

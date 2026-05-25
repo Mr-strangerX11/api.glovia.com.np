@@ -24,6 +24,13 @@ let FlashDealsController = class FlashDealsController {
     constructor(flashDealsService) {
         this.flashDealsService = flashDealsService;
     }
+    async getStatistics() {
+        const stats = await this.flashDealsService.getStatistics();
+        return {
+            success: true,
+            data: stats,
+        };
+    }
     async getActiveFlashDeals() {
         const deals = await this.flashDealsService.getActiveFlashDeals();
         return {
@@ -100,15 +107,16 @@ let FlashDealsController = class FlashDealsController {
             success: true,
         };
     }
-    async getStatistics() {
-        const stats = await this.flashDealsService.getStatistics();
-        return {
-            success: true,
-            data: stats,
-        };
-    }
 };
 exports.FlashDealsController = FlashDealsController;
+__decorate([
+    (0, common_1.Get)('admin/stats'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(user_schema_1.UserRole.SUPER_ADMIN, user_schema_1.UserRole.ADMIN),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], FlashDealsController.prototype, "getStatistics", null);
 __decorate([
     (0, common_1.Get)('active'),
     __metadata("design:type", Function),
@@ -192,14 +200,6 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], FlashDealsController.prototype, "recordClick", null);
-__decorate([
-    (0, common_1.Get)('admin/stats'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(user_schema_1.UserRole.SUPER_ADMIN, user_schema_1.UserRole.ADMIN),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], FlashDealsController.prototype, "getStatistics", null);
 exports.FlashDealsController = FlashDealsController = __decorate([
     (0, common_1.Controller)('flash-deals'),
     __metadata("design:paramtypes", [flash_deals_service_1.FlashDealsService])

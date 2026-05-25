@@ -90,6 +90,12 @@ let AdminController = class AdminController {
     updateUserRole(id, dto, actorRole) {
         return this.adminService.updateUserRole(id, dto.role, actorRole);
     }
+    updateUserPermissions(id, permissions) {
+        return this.adminService.updateUserPermissions(id, permissions);
+    }
+    updateUser(id, data) {
+        return this.adminService.updateUserFields(id, data);
+    }
     deleteUser(id) {
         return this.adminService.deleteUser(id);
     }
@@ -287,6 +293,24 @@ __decorate([
     __metadata("design:paramtypes", [String, user_dto_1.UpdateUserRoleDto, String]),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "updateUserRole", null);
+__decorate([
+    (0, common_1.Put)('users/:id/permissions'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update user permissions' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)('permissions')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateUserPermissions", null);
+__decorate([
+    (0, common_1.Put)('users/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update user fields (vendorType, etc.)' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateUser", null);
 __decorate([
     (0, common_1.Delete)('users/:id'),
     (0, swagger_1.ApiOperation)({ summary: 'Delete user' }),
