@@ -2,6 +2,9 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 import { Request } from 'express';
 
 function getAllowedIps(): string[] {
+  // ADMIN_IP_GUARD_DISABLED takes priority over ALLOWED_ADMIN_IPS
+  if (process.env.ADMIN_IP_GUARD_DISABLED === 'true') return ['*'];
+
   const envIps = process.env.ALLOWED_ADMIN_IPS;
   if (envIps) {
     return envIps
@@ -9,8 +12,7 @@ function getAllowedIps(): string[] {
       .map((ip) => ip.trim())
       .filter(Boolean);
   }
-  // Default: allow all IPs when guard is disabled via env var, or restrict to localhost
-  if (process.env.ADMIN_IP_GUARD_DISABLED === 'true') return ['*'];
+
   return ['127.0.0.1', '::1'];
 }
 
