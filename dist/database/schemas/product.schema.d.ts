@@ -19,9 +19,9 @@ export declare class Product extends Document {
     weight?: number;
     categoryId: Types.ObjectId;
     brandId?: Types.ObjectId;
-    vendorId: Types.ObjectId;
-    vendorName: string;
-    vendorEmail: string;
+    vendorId?: Types.ObjectId;
+    vendorName?: string;
+    vendorEmail?: string;
     vendorPhone?: string;
     uploadedBy?: string;
     uploadedById?: Types.ObjectId;

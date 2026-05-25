@@ -565,7 +565,7 @@ let AdminService = class AdminService {
                 ? this.brandModel.find({ _id: { $in: [...brandIds] } }, { _id: 1 }).lean()
                 : Promise.resolve([]),
             vendorIds.size > 0
-                ? this.userModel.find({ _id: { $in: [...vendorIds] } }, { _id: 1 }).lean()
+                ? this.userModel.find({ _id: { $in: [...vendorIds] } }, { _id: 1, email: 1, firstName: 1, lastName: 1 }).lean()
                 : Promise.resolve([]),
         ]);
         const [existingSkus, existingSlugs, categoriesById, brandsById, vendorsById] = lookups;
@@ -579,9 +579,8 @@ let AdminService = class AdminService {
             vendorEmails.size > 0
                 ? this.userModel
                     .find({
-                    role: user_schema_1.UserRole.VENDOR,
                     email: { $in: [...vendorEmails].map((e) => new RegExp(`^${e}$`, 'i')) },
-                }, { _id: 1, email: 1 })
+                }, { _id: 1, email: 1, firstName: 1, lastName: 1 })
                     .lean()
                 : Promise.resolve([]),
         ]);
@@ -628,13 +627,26 @@ let AdminService = class AdminService {
             brandNameMap.set(b.name.toLowerCase(), b._id.toString());
         }
         const vendorEmailMap = new Map();
+        const vendorDetailsMap = new Map();
         for (const v of vendorsByEmail) {
             vendorEmailMap.set(v.email.toLowerCase(), v._id.toString());
+            vendorDetailsMap.set(v._id.toString(), {
+                name: [v.firstName, v.lastName].filter(Boolean).join(' ') || v.email,
+                email: v.email,
+            });
+        }
+        for (const v of vendorsById) {
+            if (!vendorDetailsMap.has(v._id.toString())) {
+                vendorDetailsMap.set(v._id.toString(), {
+                    name: [v.firstName, v.lastName].filter(Boolean).join(' ') || v.email,
+                    email: v.email,
+                });
+            }
         }
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             try {
-                const { name, slug, description, price, compareAtPrice, sku, stockQuantity, ingredients, benefits, howToUse, isFeatured, isBestSeller, isNew, tags, imageUrls, discountPercentage, } = row;
+                const { name, slug, description, price, compareAtPrice, sku, stockQuantity, quantityMl, ingredients, benefits, howToUse, isFeatured, isBestSeller, isNew, tags, imageUrls, discountPercentage, } = row;
                 let resolvedCategoryId = null;
                 const catRaw = row.categoryId || row.category || '';
                 if (catRaw && mongoose_2.Types.ObjectId.isValid(catRaw)) {
@@ -689,6 +701,7 @@ let AdminService = class AdminService {
                 if (takenSlugs.has(cleanSlug))
                     throw new Error(`Slug already exists: ${slug}`);
                 const parseBool = (val) => val === true || String(val).toLowerCase() === 'true';
+                const vendorDetails = resolvedVendorId ? vendorDetailsMap.get(resolvedVendorId) : undefined;
                 const product = new this.productModel({
                     name: this.sanitize(name),
                     slug: cleanSlug,
@@ -698,9 +711,12 @@ let AdminService = class AdminService {
                     discountPercentage: discountPercentage ? Number(discountPercentage) : 0,
                     sku: cleanSku,
                     stockQuantity: Number(stockQuantity || 0),
+                    quantityMl: quantityMl ? parseFloat(String(quantityMl)) || 0 : undefined,
                     categoryId: new mongoose_2.Types.ObjectId(resolvedCategoryId),
                     brandId: resolvedBrandId ? new mongoose_2.Types.ObjectId(resolvedBrandId) : null,
                     vendorId: resolvedVendorId ? new mongoose_2.Types.ObjectId(resolvedVendorId) : null,
+                    vendorName: vendorDetails?.name || row.vendorName || null,
+                    vendorEmail: vendorDetails?.email || row.vendorEmail || null,
                     ingredients: this.sanitize(ingredients),
                     benefits: this.sanitize(benefits),
                     howToUse: this.sanitize(howToUse),

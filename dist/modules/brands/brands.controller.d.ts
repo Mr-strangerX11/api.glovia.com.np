@@ -72,9 +72,9 @@ export declare class BrandsController {
                 weight?: number;
                 categoryId: import("mongoose").Types.ObjectId;
                 brandId?: import("mongoose").Types.ObjectId;
-                vendorId: import("mongoose").Types.ObjectId;
-                vendorName: string;
-                vendorEmail: string;
+                vendorId?: import("mongoose").Types.ObjectId;
+                vendorName?: string;
+                vendorEmail?: string;
                 vendorPhone?: string;
                 uploadedBy?: string;
                 uploadedById?: import("mongoose").Types.ObjectId;

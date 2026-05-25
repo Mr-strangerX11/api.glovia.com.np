@@ -696,7 +696,7 @@ export class AdminService {
         ? this.brandModel.find({ _id: { $in: [...brandIds] } }, { _id: 1 }).lean()
         : Promise.resolve([]),
       vendorIds.size > 0
-        ? this.userModel.find({ _id: { $in: [...vendorIds] } }, { _id: 1 }).lean()
+        ? this.userModel.find({ _id: { $in: [...vendorIds] } }, { _id: 1, email: 1, firstName: 1, lastName: 1 }).lean()
         : Promise.resolve([]),
     ]);
 
@@ -717,10 +717,9 @@ export class AdminService {
         ? this.userModel
             .find(
               {
-                role: UserRole.VENDOR,
                 email: { $in: [...vendorEmails].map((e) => new RegExp(`^${e}$`, 'i')) },
               },
-              { _id: 1, email: 1 }
+              { _id: 1, email: 1, firstName: 1, lastName: 1 }
             )
             .lean()
         : Promise.resolve([]),
@@ -778,8 +777,22 @@ export class AdminService {
       brandNameMap.set(b.name.toLowerCase(), b._id.toString());
     }
     const vendorEmailMap = new Map<string, string>();
+    // vendorDetailsMap: id → { name, email } for populating vendorName/vendorEmail on product
+    const vendorDetailsMap = new Map<string, { name: string; email: string }>();
     for (const v of vendorsByEmail as any[]) {
       vendorEmailMap.set(v.email.toLowerCase(), v._id.toString());
+      vendorDetailsMap.set(v._id.toString(), {
+        name: [v.firstName, v.lastName].filter(Boolean).join(' ') || v.email,
+        email: v.email,
+      });
+    }
+    for (const v of vendorsById as any[]) {
+      if (!vendorDetailsMap.has(v._id.toString())) {
+        vendorDetailsMap.set(v._id.toString(), {
+          name: [v.firstName, v.lastName].filter(Boolean).join(' ') || v.email,
+          email: v.email,
+        });
+      }
     }
 
     for (let i = 0; i < rows.length; i++) {
@@ -793,6 +806,7 @@ export class AdminService {
           compareAtPrice,
           sku,
           stockQuantity,
+          quantityMl,
           ingredients,
           benefits,
           howToUse,
@@ -864,6 +878,7 @@ export class AdminService {
 
         const parseBool = (val: any) => val === true || String(val).toLowerCase() === 'true';
 
+        const vendorDetails = resolvedVendorId ? vendorDetailsMap.get(resolvedVendorId) : undefined;
         const product = new this.productModel({
           name: this.sanitize(name),
           slug: cleanSlug,
@@ -873,9 +888,12 @@ export class AdminService {
           discountPercentage: discountPercentage ? Number(discountPercentage) : 0,
           sku: cleanSku,
           stockQuantity: Number(stockQuantity || 0),
+          quantityMl: quantityMl ? parseFloat(String(quantityMl)) || 0 : undefined,
           categoryId: new Types.ObjectId(resolvedCategoryId),
           brandId: resolvedBrandId ? new Types.ObjectId(resolvedBrandId) : null,
           vendorId: resolvedVendorId ? new Types.ObjectId(resolvedVendorId) : null,
+          vendorName: vendorDetails?.name || row.vendorName || null,
+          vendorEmail: vendorDetails?.email || row.vendorEmail || null,
           ingredients: this.sanitize(ingredients),
           benefits: this.sanitize(benefits),
           howToUse: this.sanitize(howToUse),
