@@ -85,4 +85,7 @@ export declare class UsersController {
     }> & {
         __v: number;
     }>;
+    deleteAccount(userId: string): Promise<{
+        message: string;
+    }>;
 }

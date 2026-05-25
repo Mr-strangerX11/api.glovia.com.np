@@ -69,7 +69,10 @@ __decorate([
 exports.CategoriesGateway = CategoriesGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {
-            origin: process.env.FRONTEND_URL || 'https://glovia.com.np',
+            origin: (process.env.FRONTEND_URL || 'https://glovia.com.np')
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean),
             credentials: true,
         },
     })

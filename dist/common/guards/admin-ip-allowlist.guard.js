@@ -9,6 +9,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminIpAllowlistGuard = void 0;
 const common_1 = require("@nestjs/common");
 function getAllowedIps() {
+    if (process.env.ADMIN_IP_GUARD_DISABLED === 'true')
+        return ['*'];
     const envIps = process.env.ALLOWED_ADMIN_IPS;
     if (envIps) {
         return envIps
@@ -16,8 +18,6 @@ function getAllowedIps() {
             .map((ip) => ip.trim())
             .filter(Boolean);
     }
-    if (process.env.ADMIN_IP_GUARD_DISABLED === 'true')
-        return ['*'];
     return ['127.0.0.1', '::1'];
 }
 function getClientIp(request) {

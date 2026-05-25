@@ -21,6 +21,10 @@ const config_1 = require("@nestjs/config");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const user_schema_1 = require("../../database/schemas/user.schema");
+function getAllowedOrigins() {
+    const raw = process.env.FRONTEND_URL || 'http://localhost:3000';
+    return raw.split(',').map((s) => s.trim()).filter(Boolean);
+}
 let RealtimeGateway = class RealtimeGateway {
     constructor(jwtService, configService, userModel) {
         this.jwtService = jwtService;
@@ -129,8 +133,9 @@ __decorate([
 exports.RealtimeGateway = RealtimeGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {
-            origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+            origin: getAllowedOrigins(),
             methods: ['GET', 'POST'],
+            credentials: true,
         },
         namespace: '/realtime',
     }),

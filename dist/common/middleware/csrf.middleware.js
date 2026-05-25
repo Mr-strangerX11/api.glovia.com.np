@@ -1,9 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = csrfMiddleware;
+const CSRF_EXEMPT = [
+    /^\/api\/v\d+\/auth\//,
+    /^\/api\/v\d+\/flash-deals\/[^/]+\/view$/,
+    /^\/api\/v\d+\/flash-deals\/[^/]+\/click$/,
+];
 function csrfMiddleware(req, res, next) {
     const safeMethods = ['GET', 'HEAD', 'OPTIONS'];
     if (safeMethods.includes(req.method))
+        return next();
+    if (CSRF_EXEMPT.some(re => re.test(req.path)))
         return next();
     const headerToken = (req.headers['x-csrf-token'] || req.headers['x-xsrf-token']);
     const cookieToken = (req.cookies && req.cookies['csrf_token']);

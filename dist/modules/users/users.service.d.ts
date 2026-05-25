@@ -99,4 +99,5 @@ export declare class UsersService {
         __v: number;
     }>;
     isVendorFrozen(userId: string): Promise<boolean>;
+    deleteAccount(userId: string): Promise<void>;
 }

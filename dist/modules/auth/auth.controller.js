@@ -25,15 +25,15 @@ const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined;
 const isProduction = process.env.NODE_ENV === 'production';
 const authCookieOptions = {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax',
+    secure: true,
+    sameSite: 'none',
     path: '/',
     domain: COOKIE_DOMAIN,
 };
 const csrfCookieOptions = {
     httpOnly: false,
-    secure: isProduction,
-    sameSite: 'lax',
+    secure: true,
+    sameSite: 'none',
     path: '/',
     domain: COOKIE_DOMAIN,
 };

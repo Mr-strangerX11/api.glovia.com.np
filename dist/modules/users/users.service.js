@@ -325,6 +325,18 @@ let UsersService = class UsersService {
         const user = await this.userModel.findById(userId).select('isFrozen').lean();
         return user?.isFrozen || false;
     }
+    async deleteAccount(userId) {
+        const id = new mongoose_2.Types.ObjectId(userId);
+        const user = await this.userModel.findById(id).lean();
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        await Promise.all([
+            this.addressModel.deleteMany({ userId: id }),
+            this.otpVerificationModel.deleteMany({ userId: id }),
+        ]);
+        await this.userModel.findByIdAndDelete(id);
+    }
 };
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([

@@ -57,6 +57,10 @@ let UsersController = class UsersController {
     getVendorStatus(userId) {
         return this.usersService.getVendorStatus(userId);
     }
+    async deleteAccount(userId) {
+        await this.usersService.deleteAccount(userId);
+        return { message: 'Account deleted successfully' };
+    }
 };
 exports.UsersController = UsersController;
 __decorate([
@@ -155,6 +159,14 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "getVendorStatus", null);
+__decorate([
+    (0, common_1.Delete)('me'),
+    (0, swagger_1.ApiOperation)({ summary: 'Permanently delete own account and all associated data' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "deleteAccount", null);
 exports.UsersController = UsersController = __decorate([
     (0, swagger_1.ApiTags)('Users'),
     (0, common_1.Controller)('users'),
