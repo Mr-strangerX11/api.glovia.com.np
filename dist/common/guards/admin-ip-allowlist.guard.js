@@ -12,13 +12,13 @@ function getAllowedIps() {
     if (process.env.ADMIN_IP_GUARD_DISABLED === 'true')
         return ['*'];
     const envIps = process.env.ALLOWED_ADMIN_IPS;
-    if (envIps) {
+    if (envIps && envIps.trim()) {
         return envIps
             .split(',')
             .map((ip) => ip.trim())
             .filter(Boolean);
     }
-    return ['127.0.0.1', '::1'];
+    return ['*'];
 }
 function getClientIp(request) {
     const forwarded = request.headers['x-forwarded-for'];
