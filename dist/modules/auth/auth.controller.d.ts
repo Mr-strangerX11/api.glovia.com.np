@@ -42,6 +42,9 @@ export declare class AuthController {
     invalidateSessions(userId: string, res: Response): Promise<{
         message: string;
     }>;
+    getCsrfToken(req: Request): {
+        csrfToken: any;
+    };
     getProfile(user: any): Promise<any>;
     getEmailHealth(user: any): Promise<{
         nodeEnv: string;

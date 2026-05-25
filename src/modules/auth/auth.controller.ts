@@ -26,8 +26,10 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Request, Response } from 'express';
 import { UserRole } from '../../database/schemas/user.schema';
 
-const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined;
 const isProduction = process.env.NODE_ENV === 'production';
+// Default to .glovia.com.np in production so the csrf_token cookie is readable
+// by JS at glovia.com.np (parent domain covers all subdomains).
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || (isProduction ? '.glovia.com.np' : undefined);
 
 // SameSite=None + Secure is required for cookies to be sent on cross-subdomain
 // XHR requests (glovia.com.np → backend.glovia.com.np). Lax blocks them entirely.
@@ -189,6 +191,14 @@ export class AuthController {
     await this.authService.invalidateAllSessions(userId, 'user_requested');
     clearAuthCookies(res);
     return { message: 'All sessions invalidated' };
+  }
+
+  @Get('csrf-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Return the current CSRF token from cookie (for cross-subdomain clients)' })
+  getCsrfToken(@Req() req: Request) {
+    const token = (req.cookies as any)?.csrf_token;
+    return { csrfToken: token || '' };
   }
 
   @Get('me')

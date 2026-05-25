@@ -21,8 +21,8 @@ const auth_dto_1 = require("./dto/auth.dto");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../../common/decorators/current-user.decorator");
 const user_schema_1 = require("../../database/schemas/user.schema");
-const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined;
 const isProduction = process.env.NODE_ENV === 'production';
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || (isProduction ? '.glovia.com.np' : undefined);
 const authCookieOptions = {
     httpOnly: true,
     secure: true,
@@ -109,6 +109,10 @@ let AuthController = class AuthController {
         await this.authService.invalidateAllSessions(userId, 'user_requested');
         clearAuthCookies(res);
         return { message: 'All sessions invalidated' };
+    }
+    getCsrfToken(req) {
+        const token = req.cookies?.csrf_token;
+        return { csrfToken: token || '' };
     }
     async getProfile(user) {
         return user;
@@ -205,6 +209,15 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "invalidateSessions", null);
+__decorate([
+    (0, common_1.Get)('csrf-token'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Return the current CSRF token from cookie (for cross-subdomain clients)' }),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "getCsrfToken", null);
 __decorate([
     (0, common_1.Get)('me'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
