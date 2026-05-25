@@ -4,6 +4,8 @@ import { Request, Response, NextFunction } from 'express';
 // Analytics POST routes (view/click) are fire-and-forget and unauthenticated.
 const CSRF_EXEMPT = [
   /^\/api\/v\d+\/auth\//,
+  /^\/api\/v\d+\/admin\/init$/,
+  /^\/api\/v\d+\/admin\/fix-superadmin$/,
   /^\/api\/v\d+\/flash-deals\/[^/]+\/view$/,
   /^\/api\/v\d+\/flash-deals\/[^/]+\/click$/,
 ];

@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = csrfMiddleware;
 const CSRF_EXEMPT = [
     /^\/api\/v\d+\/auth\//,
+    /^\/api\/v\d+\/admin\/init$/,
+    /^\/api\/v\d+\/admin\/fix-superadmin$/,
     /^\/api\/v\d+\/flash-deals\/[^/]+\/view$/,
     /^\/api\/v\d+\/flash-deals\/[^/]+\/click$/,
 ];
