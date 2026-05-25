@@ -11,7 +11,10 @@ import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || 'https://glovia.com.np',
+    origin: (process.env.FRONTEND_URL || 'https://glovia.com.np')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
     credentials: true,
   },
 })

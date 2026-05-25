@@ -28,6 +28,10 @@
     "create:admin": "ts-node src/scripts/create-admin.ts",
     "seed:users": "ts-node src/scripts/seed-users.ts"
   },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
   },

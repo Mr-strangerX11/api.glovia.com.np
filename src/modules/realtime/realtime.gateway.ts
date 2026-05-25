@@ -14,10 +14,16 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { User } from '../../database/schemas/user.schema';
 
+function getAllowedOrigins(): string[] {
+  const raw = process.env.FRONTEND_URL || 'http://localhost:3000';
+  return raw.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: getAllowedOrigins(),
     methods: ['GET', 'POST'],
+    credentials: true,
   },
   namespace: '/realtime',
 })
