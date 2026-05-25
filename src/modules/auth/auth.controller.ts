@@ -29,18 +29,20 @@ import { UserRole } from '../../database/schemas/user.schema';
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined;
 const isProduction = process.env.NODE_ENV === 'production';
 
+// SameSite=None + Secure is required for cookies to be sent on cross-subdomain
+// XHR requests (glovia.com.np → backend.glovia.com.np). Lax blocks them entirely.
 const authCookieOptions = {
   httpOnly: true,
-  secure: isProduction,
-  sameSite: 'lax' as const,
+  secure: true,
+  sameSite: 'none' as const,
   path: '/',
   domain: COOKIE_DOMAIN,
 };
 
 const csrfCookieOptions = {
   httpOnly: false,
-  secure: isProduction,
-  sameSite: 'lax' as const,
+  secure: true,
+  sameSite: 'none' as const,
   path: '/',
   domain: COOKIE_DOMAIN,
 };
