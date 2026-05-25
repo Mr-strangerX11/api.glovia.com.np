@@ -86,7 +86,9 @@ export class OrdersService {
         quantity: item.quantity,
         price: product.price,
         total: itemTotal,
-        vendorId: product.vendorId, // Include vendor ID
+        vendorId: product.vendorId || null,
+        vendorName: (product as any).vendorName || null,
+        vendorEmail: (product as any).vendorEmail || null,
       });
 
       subtotal += itemTotal;

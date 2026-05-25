@@ -9,15 +9,15 @@ export class OrderItem extends Document {
   @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
   productId: Types.ObjectId;
 
-  // ===== VENDOR FIELDS (CRITICAL) =====
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  vendorId: Types.ObjectId;
+  // ===== VENDOR FIELDS =====
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  vendorId?: Types.ObjectId;
 
-  @Prop({ required: true })
-  vendorName: string;
+  @Prop()
+  vendorName?: string;
 
-  @Prop({ required: true })
-  vendorEmail: string;
+  @Prop()
+  vendorEmail?: string;
 
   @Prop()
   vendorPhone?: string;

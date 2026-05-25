@@ -68,6 +68,36 @@ export class VendorsService {
   }
 
   /**
+   * Get vendor by email slug (public — no auth needed)
+   * Slug is email with non-alphanumeric chars replaced by '-'
+   */
+  async getVendorBySlug(slug: string) {
+    const vendors = await this.userModel
+      .find({ role: 'VENDOR' })
+      .select('_id firstName lastName email phone vendorType vendorDescription vendorLogo')
+      .lean();
+
+    const vendor = vendors.find((v: any) => {
+      const emailSlug = (v.email || '').toLowerCase().replace(/[^a-z0-9]/g, '-');
+      return emailSlug === slug;
+    });
+
+    if (!vendor) {
+      throw new NotFoundException('Vendor not found');
+    }
+
+    const productCount = await this.productModel.countDocuments({
+      vendorId: vendor._id,
+      isActive: true,
+    });
+
+    return {
+      success: true,
+      vendor: { ...vendor, productCount },
+    };
+  }
+
+  /**
    * Get vendor profile with summary
    */
   async getVendorProfile(vendorId: string) {

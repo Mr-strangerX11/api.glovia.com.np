@@ -63,6 +63,17 @@ export class VendorsController {
   }
 
   /**
+   * Public: Get vendor by email slug (e.g. kashichaudhary2002-gmail-com)
+   * Endpoint: GET /api/v1/vendors/store/:slug
+   * MUST be before :vendorId routes
+   */
+  @Get('store/:slug')
+  @ApiOperation({ summary: 'Get vendor profile by email slug (public)' })
+  async getVendorBySlug(@Param('slug') slug: string) {
+    return this.vendorsService.getVendorBySlug(slug);
+  }
+
+  /**
    * Public: Get vendor store products
    * Endpoint: GET /api/v1/vendors/:vendorId/products
    * MUST be after specific routes (list/admin, orders/my-orders)

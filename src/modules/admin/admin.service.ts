@@ -1734,14 +1734,28 @@ export class AdminService {
     const vendors = await this.userModel
       .find({ role: UserRole.VENDOR })
       .select(
-        '_id email firstName lastName profileImage vendorLogo vendorDescription isFeatured createdAt'
+        '_id email firstName lastName phone profileImage vendorLogo vendorDescription vendorType isFeatured isFrozen isEmailVerified createdAt'
       )
       .sort({ createdAt: -1 })
       .lean();
+
+    // Attach product count for each vendor
+    const vendorIds = vendors.map((v: any) => v._id);
+    const productCounts = await this.productModel.aggregate([
+      { $match: { vendorId: { $in: vendorIds }, isActive: true } },
+      { $group: { _id: '$vendorId', count: { $sum: 1 } } },
+    ]);
+    const countMap = new Map(productCounts.map((p: any) => [p._id.toString(), p.count]));
+
+    const enriched = vendors.map((v: any) => ({
+      ...v,
+      productCount: countMap.get(v._id.toString()) || 0,
+    }));
+
     return {
       status: 'success',
-      data: vendors,
-      count: vendors.length,
+      data: enriched,
+      count: enriched.length,
     };
   }
 

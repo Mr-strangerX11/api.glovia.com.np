@@ -33,6 +33,9 @@ export class Address extends Document {
   @Prop({ default: false })
   isDefault: boolean;
 
+  @Prop({ type: String, enum: ['home', 'office', 'other'], default: 'home' })
+  addressType?: string;
+
   // Geo-verification
   @Prop()
   latitude?: number;

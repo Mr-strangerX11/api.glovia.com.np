@@ -55,6 +55,7 @@ export class ProductsService {
     category?: string;
     brandId?: string;
     brand?: string;
+    vendorId?: string;
     skinType?: SkinType;
     minPrice?: number;
     maxPrice?: number;
@@ -72,6 +73,7 @@ export class ProductsService {
       category,
       brandId,
       brand,
+      vendorId,
       skinType,
       minPrice,
       maxPrice,
@@ -122,6 +124,10 @@ export class ProductsService {
 
     if (resolvedBrandId) {
       where.brandId = resolvedBrandId;
+    }
+
+    if (vendorId && Types.ObjectId.isValid(vendorId)) {
+      where.vendorId = new Types.ObjectId(vendorId);
     }
 
     if (skinType) {

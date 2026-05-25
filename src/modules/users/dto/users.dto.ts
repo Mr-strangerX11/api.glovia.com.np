@@ -105,6 +105,11 @@ export class CreateAddressDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+
+  @ApiProperty({ required: false, enum: ['home', 'office', 'other'] })
+  @IsOptional()
+  @IsString()
+  addressType?: string;
 }
 
 export class UpdateAddressDto {
@@ -152,4 +157,9 @@ export class UpdateAddressDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+
+  @ApiProperty({ required: false, enum: ['home', 'office', 'other'] })
+  @IsOptional()
+  @IsString()
+  addressType?: string;
 }
