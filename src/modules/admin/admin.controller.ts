@@ -18,7 +18,6 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { AdminIpAllowlistGuard } from '../../common/guards/admin-ip-allowlist.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { HttpCode } from '@nestjs/common';
@@ -41,7 +40,7 @@ import { UploadService, imageFileFilter, MAX_UPLOAD_SIZE_BYTES } from '../upload
 
 @ApiTags('Admin')
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard, AdminIpAllowlistGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 @ApiBearerAuth()
 export class AdminController {
